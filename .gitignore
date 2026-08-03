@@ -2,3 +2,4 @@ node_modules/
 *.tgz
 .opencode/
 .agy-search/
+.omo/

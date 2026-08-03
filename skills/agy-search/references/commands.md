@@ -4,13 +4,13 @@
 agy-search [--agy-path PATH] [--model SLUG] [--effort low|medium|high] \
   [--timeout SECONDS] COMMAND
 
-agy-search status [-o PATH]
-agy-search models [-o PATH]
-agy-search search QUERY [-n N] [--domain DOMAIN]... [-o PATH]
-agy-search extract URL... [--query TEXT] [-o PATH]
-agy-search map URL [--limit N] [--instructions TEXT] [--allow-external] [-o PATH]
-agy-search crawl URL [--limit N] [--instructions TEXT] [--allow-external] [-o PATH]
-agy-search research QUERY [--max-sources N] [-o PATH]
+agy-search status [--json] [-o PATH]
+agy-search models [--json] [-o PATH]
+agy-search search QUERY [-n N] [--domain DOMAIN]... [--json] [-o PATH]
+agy-search extract URL... [--query TEXT] [--json] [-o PATH]
+agy-search map URL [--limit N] [--instructions TEXT] [--allow-external] [--json] [-o PATH]
+agy-search crawl URL [--limit N] [--instructions TEXT] [--allow-external] [--json] [-o PATH]
+agy-search research QUERY [--max-sources N] [--json] [-o PATH]
 ```
 
 Content responses use `object` discriminators `search`, `extract`, `map`,
