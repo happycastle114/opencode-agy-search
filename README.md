@@ -3,17 +3,19 @@
 Thin OpenCode plugin for the standalone
 [`agy-search`](https://github.com/happycastle114/agy-search) CLI. It registers a
 source-backed research skill and forwards the one documented Antigravity
-executable override. The Python CLI remains the sole owner of process execution,
+executable override. The Rust CLI remains the sole owner of process execution,
 schemas, provenance checks, JSON output, and exit codes.
 
 ## Requirements
 
 - OpenCode 1.18.11
-- `agy-search` 0.1.0 on `PATH`
+- `agy-search` 0.2.0 on `PATH`
 - Google Antigravity CLI 1.1.8 or newer, signed in with web tools available
 
 ```bash
-uv tool install agy-search==0.1.0
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://github.com/happycastle114/agy-search/releases/latest/download/agy-search-installer.sh | sh
+agy-search --version
 agy-search status
 ```
 
@@ -26,7 +28,7 @@ Add the version-pinned npm package to `opencode.json`:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@happycastle/opencode-agy-search@0.1.0"]
+  "plugin": ["@happycastle/opencode-agy-search@0.2.0"]
 }
 ```
 
