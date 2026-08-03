@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@happycastle/opencode-agy-search",
+  "version": "0.1.0",
+  "description": "OpenCode plugin and research skill for the agy-search Antigravity CLI",
+  "type": "module",
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "files": [
+    "index.ts",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "biome check .",
+    "format:check": "biome format .",
+    "test": "bun test",
+    "test:e2e": "bash test/e2e-opencode.sh",
+    "test:e2e:live": "bash test/e2e-live-opencode.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "antigravity",
+    "opencode",
+    "plugin",
+    "research",
+    "search"
+  ],
+  "author": "happycastle114 (https://github.com/happycastle114)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/happycastle114/opencode-agy-search.git"
+  },
+  "bugs": {
+    "url": "https://github.com/happycastle114/opencode-agy-search/issues"
+  },
+  "homepage": "https://github.com/happycastle114/opencode-agy-search#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.6",
+    "@opencode-ai/plugin": "1.18.11",
+    "@types/bun": "1.3.14",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "bun@1.3.14"
+}
