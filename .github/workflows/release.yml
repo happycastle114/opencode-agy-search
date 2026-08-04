@@ -56,7 +56,7 @@ jobs:
           if remote_integrity=$(npm view "@happycastle114/opencode-agy-search@$package_version" dist.integrity --registry=https://npm.pkg.github.com 2>/dev/null); then
             test "$remote_integrity" = "$local_integrity"
           else
-            npm publish "$archive" --ignore-scripts --provenance=false
+            npm publish "./$archive" --ignore-scripts --provenance=false
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
