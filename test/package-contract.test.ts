@@ -7,14 +7,24 @@ const EXPECTED_RUNTIME_FILES = [
   "README.md",
   "index.ts",
   "package.json",
+  "scripts/install.sh",
   "skills/agy-search/SKILL.md",
   "skills/agy-search/rules/install.md",
 ]
 
 describe("public npm package contract", () => {
   test("uses an explicit runtime allowlist and exact development pins", () => {
-    expect(metadata.files).toEqual(["index.ts", "skills", "README.md", "LICENSE"])
-    expect(metadata.publishConfig).toEqual({ access: "public", provenance: true })
+    expect(metadata.name).toBe("@happycastle114/opencode-agy-search")
+    expect(metadata.version).toBe("0.3.0")
+    expect(metadata.files).toEqual([
+      "index.ts",
+      "skills",
+      "scripts/install.sh",
+      "README.md",
+      "LICENSE",
+    ])
+    expect(metadata.publishConfig).toEqual({ registry: "https://npm.pkg.github.com" })
+    expect("dependencies" in metadata).toBeFalse()
     expect(
       Object.values(metadata.devDependencies).every((version) => /^\d+\.\d+\.\d+$/.test(version)),
     ).toBeTrue()

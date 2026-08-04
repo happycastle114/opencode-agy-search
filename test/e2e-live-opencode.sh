@@ -71,7 +71,7 @@ ln -s "$e2e_root/package/package/index.ts" "$e2e_root/workspace/.opencode/plugin
 (
   cd "$e2e_root/workspace"
   prompt=$(printf '%s' \
-    "Use the agy-search skill. Run agy-search status. Then run exactly: agy-search --model $agy_model --effort low search 'Google Antigravity CLI 1.1.8 site:antigravity.google/changelog' -n 2 -o .agy-search/live-search.json. Do not mask its exit code. If it returns exit 6, retry once with the narrower query 'Antigravity 1.1.8 changelog'. Read the successful file and finish with the exact marker OPENCODE_AGY_SEARCH_LIVE_OK.")
+    "Use the agy-search skill. Run agy-search status. Then run exactly: agy-search --model $agy_model --effort low search 'Google Antigravity CLI 1.1.10 site:antigravity.google/changelog' -n 2 -o .agy-search/live-search.json. Do not mask its exit code. If it returns exit 6, retry once with the narrower query 'Antigravity 1.1.10 changelog'. Read the successful file and finish with the exact marker OPENCODE_AGY_SEARCH_LIVE_OK.")
   AGY_SEARCH_AGY_PATH="$agy_executable" CI=1 NO_COLOR=1 TERM=dumb \
     "$opencode_bin" run --model "$live_model" --format json \
     "$prompt" \

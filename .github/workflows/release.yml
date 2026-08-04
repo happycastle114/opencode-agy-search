@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: "@happycastle114"
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run typecheck
+      - run: bun test
+      - run: bun run test:install
+      - name: Verify immutable release identity
+        run: |
+          package_version=$(node -p "require('./package.json').version")
+          package_name=$(node -p "require('./package.json').name")
+          test "$GITHUB_REF_NAME" = "v$package_version"
+          test "$package_name" = "@happycastle114/opencode-agy-search"
+      - name: Build release assets
+        run: |
+          mkdir -p release
+          npm pack --pack-destination release >/dev/null
+          packed=$(find release -maxdepth 1 -type f -name '*.tgz')
+          package_version=$(node -p "require('./package.json').version")
+          archive="release/opencode-agy-search-$package_version.tgz"
+          mv "$packed" "$archive"
+          (cd release && sha256sum "$(basename "$archive")" >"$(basename "$archive").sha256")
+          cp scripts/install.sh release/opencode-agy-search-installer.sh
+          mkdir -p release/packed
+          tar -xzf "$archive" -C release/packed package/scripts/install.sh
+          cmp release/packed/package/scripts/install.sh release/opencode-agy-search-installer.sh
+      - name: Publish exact tarball to GitHub Packages
+        run: |
+          package_version=$(node -p "require('./package.json').version")
+          archive="release/opencode-agy-search-$package_version.tgz"
+          local_integrity="sha512-$(openssl dgst -sha512 -binary "$archive" | openssl base64 -A)"
+          if remote_integrity=$(npm view "@happycastle114/opencode-agy-search@$package_version" dist.integrity --registry=https://npm.pkg.github.com 2>/dev/null); then
+            test "$remote_integrity" = "$local_integrity"
+          else
+            npm publish "$archive" --ignore-scripts --provenance=false
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify registry readback
+        run: |
+          package_version=$(node -p "require('./package.json').version")
+          archive="release/opencode-agy-search-$package_version.tgz"
+          expected_integrity="sha512-$(openssl dgst -sha512 -binary "$archive" | openssl base64 -A)"
+          observed=$(npm view "@happycastle114/opencode-agy-search@$package_version" version --registry=https://npm.pkg.github.com)
+          observed_integrity=$(npm view "@happycastle114/opencode-agy-search@$package_version" dist.integrity --registry=https://npm.pkg.github.com)
+          test "$observed" = "$package_version"
+          test "$observed_integrity" = "$expected_integrity"
+          visibility=$(gh api \
+            "/users/$GITHUB_REPOSITORY_OWNER/packages/npm/opencode-agy-search" \
+            --jq .visibility)
+          test "$visibility" = "public"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub release
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            mkdir existing-release
+            gh release download "$GITHUB_REF_NAME" --dir existing-release
+            test "$(find existing-release -maxdepth 1 -type f | wc -l)" -eq 3
+            for asset in \
+              release/opencode-agy-search-*.tgz \
+              release/opencode-agy-search-*.tgz.sha256 \
+              release/opencode-agy-search-installer.sh; do
+              cmp "$asset" "existing-release/$(basename "$asset")"
+            done
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              release/opencode-agy-search-*.tgz \
+              release/opencode-agy-search-*.tgz.sha256 \
+              release/opencode-agy-search-installer.sh \
+              --verify-tag \
+              --generate-notes \
+              --title "opencode-agy-search ${GITHUB_REF_NAME#v}"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

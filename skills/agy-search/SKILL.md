@@ -14,6 +14,7 @@ Run this before the first research command in a task:
 
 ```bash
 command -v agy-search
+agy --version
 agy-search status
 ```
 
@@ -29,6 +30,22 @@ curl --proto '=https' --tlsv1.2 -LsSf \
 Do not silently switch providers. After installation, repeat both preflight
 commands. Run `agy-search models` before pinning a model; never invent or cache
 a model slug.
+
+The supported Antigravity floor is 1.1.10. If the user explicitly asks to
+update a release-installer copy of `agy-search`, rerun its release installer and
+then repeat preflight:
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://github.com/happycastle114/agy-search/releases/latest/download/agy-search-installer.sh \
+  | sh
+agy-search --version
+agy-search status
+```
+
+The installer verifies the selected application archive and installs no second
+updater executable. Never update either `agy-search` or `agy` implicitly.
+Antigravity manages its own background updates during regular runs.
 
 ## Choose and escalate
 
@@ -66,6 +83,9 @@ artifacts until the answer is complete so provenance can be checked.
 - Require exit code 0 and the response `object` matching the command.
 - Cite only returned `http://` or `https://` URLs that directly support a claim.
 - For research, require every cited URL to appear in `sources`.
+- Interpret `date` only as an explicit publication/release date and
+  `last_updated` only as an explicit modification/update date; `null` means the
+  structured result did not supply that metadata.
 - Prefer primary sources and cross-check consequential or time-sensitive claims.
 - State uncertainty when sources disagree or the bounded result is thin.
 - Never cite the CLI, a local `.agy-search/` path, or an unreturned URL.
