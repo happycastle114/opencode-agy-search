@@ -5,11 +5,10 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
-  release:
+  verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -22,12 +21,13 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
-          registry-url: https://npm.pkg.github.com
-          scope: "@happycastle114"
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run typecheck
       - run: bun test
+      - run: bun run test:routing:fixture
+      - run: bun run test:routing:harness
+      - run: bun run test:routing:auth
       - run: bun run test:install
       - run: bun run test:e2e
       - name: Verify immutable release identity
@@ -36,6 +36,32 @@ jobs:
           package_name=$(node -p "require('./package.json').name")
           test "$GITHUB_REF_NAME" = "v$package_version"
           test "$package_name" = "@happycastle114/opencode-agy-search"
+      - name: Verify required agy-search release first
+        run: |
+          set -euo pipefail
+          cli_version=$(node -p "require('./package.json').agySearch.minimumCliVersion")
+          cli_tag="v$cli_version"
+          release_dir="$RUNNER_TEMP/agy-search-release"
+          mkdir -p "$release_dir"
+          gh release download "$cli_tag" \
+            --repo happycastle114/agy-search \
+            --dir "$release_dir"
+          for asset in \
+            agy-search-installer.sh \
+            agy-search-aarch64-apple-darwin.tar.xz \
+            agy-search-aarch64-unknown-linux-gnu.tar.xz \
+            agy-search-x86_64-apple-darwin.tar.xz \
+            agy-search-x86_64-unknown-linux-gnu.tar.xz \
+            sha256.sum; do
+            test -f "$release_dir/$asset"
+          done
+          (cd "$release_dir" && sha256sum --check sha256.sum)
+          tar -xJf "$release_dir/agy-search-x86_64-unknown-linux-gnu.tar.xz" \
+            -C "$release_dir"
+          test "$("$release_dir/agy-search-x86_64-unknown-linux-gnu/agy-search" --version)" = \
+            "agy-search $cli_version"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build release assets
         run: |
           mkdir -p release
@@ -49,9 +75,52 @@ jobs:
           mkdir -p release/packed
           tar -xzf "$archive" -C release/packed package/scripts/install.sh
           cmp release/packed/package/scripts/install.sh release/opencode-agy-search-installer.sh
+      - name: Preserve verified release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: opencode-agy-search-release-assets
+          path: |
+            release/opencode-agy-search-*.tgz
+            release/opencode-agy-search-*.tgz.sha256
+            release/opencode-agy-search-installer.sh
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: "@happycastle114"
+      - name: Restore verified release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: opencode-agy-search-release-assets
+          path: release
+      - name: Verify downloaded release identity
+        run: |
+          set -euo pipefail
+          package_version="${GITHUB_REF_NAME#v}"
+          archive="release/opencode-agy-search-$package_version.tgz"
+          checksum="$archive.sha256"
+          test -f "$archive"
+          test -f "$checksum"
+          test -f release/opencode-agy-search-installer.sh
+          (cd release && sha256sum --check "$(basename "$checksum")")
+          test "$(tar -xOzf "$archive" package/package.json | jq -r .version)" = "$package_version"
+          test "$(tar -xOzf "$archive" package/package.json | jq -r .name)" = \
+            "@happycastle114/opencode-agy-search"
       - name: Publish exact tarball to GitHub Packages
         run: |
-          package_version=$(node -p "require('./package.json').version")
+          set -euo pipefail
+          package_version="${GITHUB_REF_NAME#v}"
           archive="release/opencode-agy-search-$package_version.tgz"
           local_integrity="sha512-$(openssl dgst -sha512 -binary "$archive" | openssl base64 -A)"
           if remote_integrity=$(npm view "@happycastle114/opencode-agy-search@$package_version" dist.integrity --registry=https://npm.pkg.github.com 2>/dev/null); then
@@ -63,11 +132,22 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify registry readback
         run: |
-          package_version=$(node -p "require('./package.json').version")
+          set -euo pipefail
+          package_version="${GITHUB_REF_NAME#v}"
           archive="release/opencode-agy-search-$package_version.tgz"
           expected_integrity="sha512-$(openssl dgst -sha512 -binary "$archive" | openssl base64 -A)"
-          observed=$(npm view "@happycastle114/opencode-agy-search@$package_version" version --registry=https://npm.pkg.github.com)
-          observed_integrity=$(npm view "@happycastle114/opencode-agy-search@$package_version" dist.integrity --registry=https://npm.pkg.github.com)
+          observed=""
+          observed_integrity=""
+          for attempt in $(seq 1 12); do
+            observed=$(npm view "@happycastle114/opencode-agy-search@$package_version" version --registry=https://npm.pkg.github.com 2>/dev/null || true)
+            observed_integrity=$(npm view "@happycastle114/opencode-agy-search@$package_version" dist.integrity --registry=https://npm.pkg.github.com 2>/dev/null || true)
+            if test "$observed" = "$package_version" && test "$observed_integrity" = "$expected_integrity"; then
+              break
+            fi
+            if test "$attempt" -lt 12; then
+              sleep 5
+            fi
+          done
           test "$observed" = "$package_version"
           test "$observed_integrity" = "$expected_integrity"
           visibility=$(gh api \
@@ -79,7 +159,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create GitHub release
         run: |
+          set -euo pipefail
+          package_version="${GITHUB_REF_NAME#v}"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            test "$(gh release view "$GITHUB_REF_NAME" --json tagName --jq .tagName)" = "$GITHUB_REF_NAME"
+            test "$(gh release view "$GITHUB_REF_NAME" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
             mkdir existing-release
             gh release download "$GITHUB_REF_NAME" --dir existing-release
             test "$(find existing-release -maxdepth 1 -type f | wc -l)" -eq 3
@@ -95,8 +179,9 @@ jobs:
               release/opencode-agy-search-*.tgz.sha256 \
               release/opencode-agy-search-installer.sh \
               --verify-tag \
+              --target "$GITHUB_SHA" \
               --generate-notes \
-              --title "opencode-agy-search ${GITHUB_REF_NAME#v}"
+              --title "opencode-agy-search $package_version"
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
