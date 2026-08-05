@@ -10,7 +10,8 @@ escalate only when the evidence is insufficient.
 
 ## Preflight
 
-Run this before the first research command in a task:
+Run this once before the first research command in the current agent session.
+Do not repeat it for every query after it succeeds:
 
 ```bash
 command -v agy-search
@@ -61,6 +62,13 @@ Escalate Search → Extract → Map → Crawl → Research only as needed. Map b
 crawl when paths are unknown. Do not emulate Tavily-only concepts:
 `agy-search research` is one-shot, with no request ID, polling, API key, credit
 model, or exhaustive-crawl promise.
+
+Fast default: run one `agy-search search "query" -n 3` and answer immediately
+when its primary-source snippets directly support the claims. The CLI already
+uses low effort by default. Do not extract or research merely to improve prose;
+escalate only when snippets are insufficient, the user requests comparison or
+deep synthesis, sources conflict, or the task is consequential/high-stakes.
+Use `--effort medium` or `--effort high` only for that deliberate escalation.
 
 ## Save context
 
