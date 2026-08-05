@@ -8,11 +8,10 @@ if [ "$(id -u)" -eq 0 ]; then
     exit 1
 fi
 
-PACKAGE_VERSION="0.3.1"
+PACKAGE_VERSION="0.3.2"
 ARCHIVE_NAME="opencode-agy-search-${PACKAGE_VERSION}.tgz"
 CHECKSUM_NAME="${ARCHIVE_NAME}.sha256"
 DEFAULT_DOWNLOAD_URL="https://github.com/happycastle114/opencode-agy-search/releases/download/v${PACKAGE_VERSION}"
-DOWNLOAD_URL="${OPENCODE_AGY_SEARCH_DOWNLOAD_URL:-$DEFAULT_DOWNLOAD_URL}"
 
 fail() {
     printf 'opencode-agy-search installer: %s\n' "$1" >&2
@@ -33,13 +32,37 @@ replace_symlink() {
     else
         # Minimal POSIX mv implementations have neither flag. The install lock
         # prevents concurrent writers; use a non-dereferencing two-step switch.
-        rm "$destination"
-        mv "$new_link" "$destination"
+        [ -L "$destination" ] || return 1
+        rm "$destination" || return 1
+        mv "$new_link" "$destination" || return 1
     fi
 
-    [ -L "$destination" ] || fail "failed to install symlink at $destination"
-    [ "$(readlink "$destination")" = "$expected_target" ] || \
-        fail "installed symlink at $destination has the wrong target"
+    [ -L "$destination" ] || return 1
+    [ "$(readlink "$destination")" = "$expected_target" ]
+}
+
+restore_symlink() {
+    destination="$1"
+    previously_existed="$2"
+    previous_target="$3"
+    installed_target="$4"
+
+    if [ "$previously_existed" -eq 1 ] && [ -L "$destination" ] && \
+        [ "$(readlink "$destination")" = "$previous_target" ]; then
+        return 0
+    fi
+    if [ ! -e "$destination" ] && [ ! -L "$destination" ]; then
+        if [ "$previously_existed" -eq 1 ]; then
+            ln -s "$previous_target" "$destination" || return 1
+        fi
+        return 0
+    fi
+    [ -L "$destination" ] || return 1
+    [ "$(readlink "$destination")" = "$installed_target" ] || return 1
+    rm "$destination" || return 1
+    if [ "$previously_existed" -eq 1 ]; then
+        ln -s "$previous_target" "$destination" || return 1
+    fi
 }
 
 validate_package_tree() {
@@ -58,8 +81,18 @@ download() {
     destination="$2"
     command -v curl >/dev/null 2>&1 || fail "curl is required"
     case "$source_url" in
-        https://*) curl --proto '=https' --tlsv1.2 -fLsS "$source_url" -o "$destination" ;;
-        file://*) curl -fLsS "$source_url" -o "$destination" ;;
+        https://*)
+            curl --disable \
+                --proto '=https' \
+                --proto-redir '=https' \
+                --tlsv1.2 \
+                --noproxy '*' \
+                --cookie '' \
+                --no-netrc \
+                --fail --location --silent --show-error \
+                --output "$destination" \
+                "$source_url"
+            ;;
         *) fail "download URL must use HTTPS" ;;
     esac
 }
@@ -80,11 +113,23 @@ marker="$temporary/.opencode-agy-search-owned"
 current_temporary=""
 plugin_temporary=""
 lock_acquired=0
+transaction_active=0
+previous_current_existed=0
+previous_current_target=""
+previous_plugin_existed=0
+previous_plugin_target=""
 touch "$marker"
 
 cleanup() {
     status=$?
     trap - EXIT INT TERM
+    if [ "$transaction_active" -eq 1 ]; then
+        restore_symlink "$plugin_link" "$previous_plugin_existed" \
+            "$previous_plugin_target" "$expected_plugin_target" || status=1
+        restore_symlink "$current_link" "$previous_current_existed" \
+            "$previous_current_target" "$release_directory" || status=1
+        transaction_active=0
+    fi
     if [ -n "$current_temporary" ] && [ -L "$current_temporary" ]; then
         rm "$current_temporary"
     fi
@@ -119,8 +164,8 @@ lock_acquired=1
 
 archive="$temporary/$ARCHIVE_NAME"
 checksum="$temporary/$CHECKSUM_NAME"
-download "$DOWNLOAD_URL/$ARCHIVE_NAME" "$archive"
-download "$DOWNLOAD_URL/$CHECKSUM_NAME" "$checksum"
+download "$DEFAULT_DOWNLOAD_URL/$ARCHIVE_NAME" "$archive"
+download "$DEFAULT_DOWNLOAD_URL/$CHECKSUM_NAME" "$checksum"
 
 checksum_line_count="$(wc -l <"$checksum" | tr -d ' ')"
 [ "$checksum_line_count" -eq 1 ] || fail "checksum document must contain one line"
@@ -192,10 +237,10 @@ current_link="$install_root/current"
 if { [ -e "$current_link" ] || [ -L "$current_link" ]; } && [ ! -L "$current_link" ]; then
     fail "$current_link exists and is not an installer-owned symlink"
 fi
-current_temporary="$install_root/.current.$$"
-ln -s "$release_directory" "$current_temporary"
-replace_symlink "$current_temporary" "$current_link" "$release_directory"
-current_temporary=""
+if [ -L "$current_link" ]; then
+    previous_current_existed=1
+    previous_current_target="$(readlink "$current_link")"
+fi
 
 plugin_link="$plugin_directory/agy-search.ts"
 expected_plugin_target="$install_root/current/index.ts"
@@ -203,11 +248,23 @@ if [ -e "$plugin_link" ] || [ -L "$plugin_link" ]; then
     [ -L "$plugin_link" ] || fail "$plugin_link exists and is not an installer-owned symlink"
     [ "$(readlink "$plugin_link")" = "$expected_plugin_target" ] || \
         fail "$plugin_link points to a different plugin"
+    previous_plugin_existed=1
+    previous_plugin_target="$(readlink "$plugin_link")"
 fi
+
+current_temporary="$install_root/.current.$$"
+ln -s "$release_directory" "$current_temporary"
 plugin_temporary="$plugin_directory/.agy-search.ts.$$"
 ln -s "$expected_plugin_target" "$plugin_temporary"
-replace_symlink "$plugin_temporary" "$plugin_link" "$expected_plugin_target"
+
+transaction_active=1
+replace_symlink "$current_temporary" "$current_link" "$release_directory" || \
+    fail "failed to install symlink at $current_link"
+current_temporary=""
+replace_symlink "$plugin_temporary" "$plugin_link" "$expected_plugin_target" || \
+    fail "failed to install symlink at $plugin_link"
 plugin_temporary=""
+transaction_active=0
 
 printf 'opencode-agy-search %s installed at %s\n' "$PACKAGE_VERSION" "$plugin_link"
 printf 'restart OpenCode, then run: opencode debug skill\n'

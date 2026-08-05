@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import { AgySearchPlugin } from "../index.ts"
 
 const AGY_EXECUTABLE_ENV = "AGY_SEARCH_AGY_PATH"
+const CURL_EXECUTABLE_ENV = "AGY_SEARCH_CURL_PATH"
 
 describe("OpenCode plugin hooks", () => {
   test("configures install guidance and one skill path idempotently", async () => {
@@ -24,11 +25,13 @@ describe("OpenCode plugin hooks", () => {
     expect(config.skills.urls).toEqual(["https://example.com/skill"])
   })
 
-  test("forwards only the documented executable override", async () => {
+  test("forwards only the documented executable overrides", async () => {
     const output: Record<string, string> = {}
     const previousExecutable = process.env[AGY_EXECUTABLE_ENV]
+    const previousCurl = process.env[CURL_EXECUTABLE_ENV]
     const previousUnrelated = process.env.UNRELATED_SECRET
     process.env[AGY_EXECUTABLE_ENV] = "/fixture/agy"
+    process.env[CURL_EXECUTABLE_ENV] = "/fixture/curl"
     process.env.UNRELATED_SECRET = "private"
 
     try {
@@ -40,17 +43,24 @@ describe("OpenCode plugin hooks", () => {
     } finally {
       if (previousExecutable === undefined) delete process.env[AGY_EXECUTABLE_ENV]
       else process.env[AGY_EXECUTABLE_ENV] = previousExecutable
+      if (previousCurl === undefined) delete process.env[CURL_EXECUTABLE_ENV]
+      else process.env[CURL_EXECUTABLE_ENV] = previousCurl
       if (previousUnrelated === undefined) delete process.env.UNRELATED_SECRET
       else process.env.UNRELATED_SECRET = previousUnrelated
     }
 
-    expect(output).toEqual({ [AGY_EXECUTABLE_ENV]: "/fixture/agy" })
+    expect(output).toEqual({
+      [AGY_EXECUTABLE_ENV]: "/fixture/agy",
+      [CURL_EXECUTABLE_ENV]: "/fixture/curl",
+    })
   })
 
   test("does not forward an absent or empty override", async () => {
     const output: Record<string, string> = {}
     const previousExecutable = process.env[AGY_EXECUTABLE_ENV]
+    const previousCurl = process.env[CURL_EXECUTABLE_ENV]
     process.env[AGY_EXECUTABLE_ENV] = ""
+    process.env[CURL_EXECUTABLE_ENV] = ""
 
     try {
       const hooks = await AgySearchPlugin()
@@ -61,6 +71,8 @@ describe("OpenCode plugin hooks", () => {
     } finally {
       if (previousExecutable === undefined) delete process.env[AGY_EXECUTABLE_ENV]
       else process.env[AGY_EXECUTABLE_ENV] = previousExecutable
+      if (previousCurl === undefined) delete process.env[CURL_EXECUTABLE_ENV]
+      else process.env[CURL_EXECUTABLE_ENV] = previousCurl
     }
 
     expect(output).toEqual({})

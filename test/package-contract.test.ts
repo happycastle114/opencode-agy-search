@@ -13,9 +13,9 @@ const EXPECTED_RUNTIME_FILES = [
 ]
 
 describe("public npm package contract", () => {
-  test("uses an explicit runtime allowlist and exact development pins", () => {
+  test("uses an explicit runtime allowlist, release version, and exact development pins", () => {
     expect(metadata.name).toBe("@happycastle114/opencode-agy-search")
-    expect(metadata.version).toBe("0.3.1")
+    expect(metadata.version).toBe("0.3.2")
     expect(metadata.files).toEqual([
       "index.ts",
       "skills",
@@ -24,6 +24,7 @@ describe("public npm package contract", () => {
       "LICENSE",
     ])
     expect(metadata.publishConfig).toEqual({ registry: "https://npm.pkg.github.com" })
+    expect(metadata.agySearch.minimumCliVersion).toBe("0.2.4")
     expect("dependencies" in metadata).toBeFalse()
     expect(
       Object.values(metadata.devDependencies).every((version) => /^\d+\.\d+\.\d+$/.test(version)),

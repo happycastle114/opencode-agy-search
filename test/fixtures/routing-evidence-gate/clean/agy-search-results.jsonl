@@ -1,0 +1,2 @@
+{"exit_code":0,"argv":["--version"]}
+{"exit_code":0,"argv":["search","--effort","low","--timeout","45","-n","3"]}

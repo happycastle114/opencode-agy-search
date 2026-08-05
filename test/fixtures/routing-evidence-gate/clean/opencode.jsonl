@@ -1,0 +1,4 @@
+{"type":"tool_use","sessionID":"fixture-clean-session","part":{"tool":"skill","state":{"status":"completed","input":{"name":"agy-search"},"output":"skill loaded"}}}
+{"type":"tool_use","sessionID":"fixture-clean-session","part":{"tool":"bash","state":{"status":"completed","output":"command -v agy-search\ncommand -v agy\ncommand -v curl"}}}
+{"type":"text","sessionID":"fixture-clean-session","part":{"text":"fixture response"}}
+{"type":"step_finish","sessionID":"fixture-clean-session","part":{"reason":"stop"}}

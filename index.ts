@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url"
 import type { Config, Hooks, Plugin } from "@opencode-ai/plugin"
 
-const AGY_EXECUTABLE_ENV = "AGY_SEARCH_AGY_PATH"
+const EXECUTABLE_ENVIRONMENT = ["AGY_SEARCH_AGY_PATH", "AGY_SEARCH_CURL_PATH"] as const
 const INSTALL_RULE_PATH = fileURLToPath(
   new URL("./skills/agy-search/rules/install.md", import.meta.url),
 )
@@ -33,9 +33,11 @@ const agySearchPluginImplementation = (async (): Promise<Hooks> => ({
     configureAgySearch(config)
   },
   "shell.env": async (_input, output) => {
-    const executable = process.env[AGY_EXECUTABLE_ENV]
-    if (executable !== undefined && executable.length > 0) {
-      output.env[AGY_EXECUTABLE_ENV] = executable
+    for (const name of EXECUTABLE_ENVIRONMENT) {
+      const executable = process.env[name]
+      if (executable !== undefined && executable.length > 0) {
+        output.env[name] = executable
+      }
     }
   },
 })) satisfies Plugin

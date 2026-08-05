@@ -26,8 +26,16 @@ if ! command -v agy-search >/dev/null; then
   printf 'agy-search must be installed on PATH\n' >&2
   exit 2
 fi
-agy-search --agy-path "$agy_executable" models | \
-  jq -e --arg model "$agy_model" '.models | index($model) != null' >/dev/null
+if ! command -v agy >/dev/null; then
+  printf 'agy must be installed on PATH\n' >&2
+  exit 2
+fi
+if ! command -v curl >/dev/null; then
+  printf 'curl must be installed on PATH\n' >&2
+  exit 2
+fi
+agy-search --version >/dev/null
+agy --version >/dev/null
 
 temp_base=$(cd "${TMPDIR:-/tmp}" && pwd -P)
 e2e_root=$(mktemp -d "$temp_base/opencode-agy-search-live.XXXXXX")
@@ -71,7 +79,7 @@ ln -s "$e2e_root/package/package/index.ts" "$e2e_root/workspace/.opencode/plugin
 (
   cd "$e2e_root/workspace"
   prompt=$(printf '%s' \
-    "Use the agy-search skill. Run agy-search status. Then run exactly: agy-search --model $agy_model --effort low search 'Google Antigravity CLI 1.1.10 site:antigravity.google/changelog' -n 2 -o .agy-search/live-search.json. Do not mask its exit code. If it returns exit 6, retry once with the narrower query 'Antigravity 1.1.10 changelog'. Read the successful file and finish with the exact marker OPENCODE_AGY_SEARCH_LIVE_OK.")
+    "Use the agy-search skill. For the cheap preflight, run command -v agy-search, command -v agy, command -v curl, agy-search --version, and agy --version only. Then run exactly: agy-search --model $agy_model --effort low search 'Google Antigravity CLI 1.1.10' --domain antigravity.google -n 2 -o .agy-search/live-search.json. Do not mask its exit code. Do not run status or models, and do not repeat an identical broad query. Read the successful file and finish with the exact marker OPENCODE_AGY_SEARCH_LIVE_OK.")
   AGY_SEARCH_AGY_PATH="$agy_executable" CI=1 NO_COLOR=1 TERM=dumb \
     "$opencode_bin" run --model "$live_model" --format json \
     "$prompt" \
@@ -82,7 +90,15 @@ result_path="$e2e_root/workspace/.agy-search/live-search.json"
 [[ -s "$result_path" ]]
 grep -F 'OPENCODE_AGY_SEARCH_LIVE_OK' "$e2e_root/opencode.jsonl" >/dev/null
 grep -F 'agy-search' "$e2e_root/opencode.jsonl" >/dev/null
-jq -e '.object == "search" and (.results | length > 0) and all(.results[]; (.url | startswith("http")))' \
+jq -e --arg domain 'antigravity.google' '
+  def allowed_host:
+    capture("^https?://(?<host>[^/:?#]+)").host as $host
+    | ($host == $domain or ($host | endswith("." + $domain)));
+  [.results[]?.url, .sources[]?.url, .evidence_audit?.candidates[]?.url] as $public_urls
+  | .object == "search"
+    and ($public_urls | length > 0)
+    and ($public_urls | all(type == "string" and allowed_host))
+' \
   "$result_path" >/dev/null
 
 printf '{"opencode_version":"%s","packed_plugin_loaded":true,"skill_invoked":true,"real_search_valid":true}\n' \
