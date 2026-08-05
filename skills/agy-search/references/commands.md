@@ -92,6 +92,30 @@ Bounds:
 `map` and `crawl` accept only same-origin results unless `--allow-external` is
 explicit. They are bounded agent operations rather than exhaustive crawlers.
 
+## Depth-routed Research templates
+
+For the skill's Synthesis and Deep levels, effort, timeout, and `--max-sources`
+are one atomic routing contract, not suggestions. Keep exactly one of every
+required flag on every Research invocation; do not rely on defaults, omit them
+when using stdin, or change them for a narrower Deep follow-up. Returning fewer
+sources is allowed and preferred when they prove the material claims.
+
+```bash
+# depth-budget: synthesis
+agy-search --effort medium --timeout 120 research "$QUESTION" --max-sources 4
+
+# depth-budget: deep-primary
+agy-search --effort high --timeout 180 research "$QUESTION" --max-sources 8
+
+# depth-budget: deep-follow-up
+agy-search --effort high --timeout 180 research "$NARROWER_QUESTION" --max-sources 8
+```
+
+Before each Research call, compare its tokens with the matching template and do
+not execute until `--effort`, `--timeout`, and `--max-sources` each occur exactly
+once with the required value, including stdin-query forms. Then check that the
+query preserves the material claim or conflict being investigated.
+
 `--as-of` is a typed, inclusive temporal cutoff for explicit source
 publication/release dates. Use it in temporal Search or Research whenever the
 caller supplies an as-of/cutoff, or when the current execution date is explicitly

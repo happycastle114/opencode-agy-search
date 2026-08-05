@@ -40,16 +40,33 @@ printf '%s\n' '{}' >"$auth_source"
 
 fallback_destination="$test_root/fallback/auth.json"
 mkdir -p "$(dirname "$fallback_destination")"
-link_opencode_auth_without_env_key "" "$auth_source" "$fallback_destination"
+link_opencode_auth_for_provider "openai" "" "$auth_source" "$fallback_destination"
 [[ -L "$fallback_destination" ]]
 [[ "$(readlink "$fallback_destination")" == "$auth_source" ]]
 printf '%s\n' 'routing live auth precedence observed: fallback-auth-link'
 
 explicit_key_destination="$test_root/explicit-key/auth.json"
 mkdir -p "$(dirname "$explicit_key_destination")"
-link_opencode_auth_without_env_key "present" "$auth_source" "$explicit_key_destination"
+link_opencode_auth_for_provider "openai" "present" "$auth_source" "$explicit_key_destination"
 [[ ! -e "$explicit_key_destination" ]]
 [[ ! -L "$explicit_key_destination" ]]
 printf '%s\n' 'routing live auth precedence observed: explicit-key-omits-auth-file'
+
+# opencode-go authenticates through OpenCode's auth store. An ambient
+# OPENAI_API_KEY must not suppress that provider's auth file or get forwarded
+# into its isolated process by accident.
+opencode_go_destination="$test_root/opencode-go/auth.json"
+mkdir -p "$(dirname "$opencode_go_destination")"
+link_opencode_auth_for_provider "opencode-go" "" "$auth_source" "$opencode_go_destination"
+[[ -L "$opencode_go_destination" ]]
+[[ "$(readlink "$opencode_go_destination")" == "$auth_source" ]]
+[[ -z "$(resolve_live_api_key_for_provider "opencode-go" "" "ambient-secret")" ]]
+[[ "$(resolve_live_api_key_for_provider "openai" "" "ambient-secret")" == ambient-secret ]]
+[[ "$(resolve_live_api_key_for_provider "openai" "explicit-secret" "ambient-secret")" == explicit-secret ]]
+if resolve_live_api_key_for_provider "opencode-go" "explicit-secret" "" >/dev/null 2>&1; then
+  printf 'routing live auth accepted a generic explicit key for opencode-go\n' >&2
+  exit 1
+fi
+printf '%s\n' 'routing live auth provider safety observed: opencode-go-auth-file-and-no-ambient-key-leak'
 
 printf '%s\n' 'routing live auth precedence contract: PASS'

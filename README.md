@@ -130,7 +130,7 @@ Ordinary work omits `--model`; an explicit returned model slug ending `-low`,
 ## GitHub Packages
 
 The same JavaScript package is published publicly as
-`@happycastle114/opencode-agy-search@0.3.3` at GitHub Packages. GitHub's npm
+`@happycastle114/opencode-agy-search@0.3.4` at GitHub Packages. GitHub's npm
 registry requires a classic personal access token with `read:packages` even for
 public packages, so this is the authenticated package-manager channel rather
 than the public one-liner channel.

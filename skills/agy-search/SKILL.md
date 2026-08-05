@@ -108,6 +108,40 @@ level and execute another level's command. A Synthesis or Deep task may use an
 `extract` follow-up for a returned canonical URL, but repeated search retries do
 not substitute for its required research call.
 
+### Binding Research command triplets
+
+Effort, timeout, and `--max-sources` form one atomic depth-routing contract.
+Once Synthesis or Deep is selected, every `research` invocation is invalid
+unless it carries exactly one of each required flag with the fixed values below.
+Do not rely on CLI defaults, omit a flag when using stdin, reorder the plan into
+a cheaper depth, or substitute values on a narrower follow-up:
+
+- Synthesis: exactly one `--effort medium`, one `--timeout 120`, and one
+  `--max-sources 4` on its single `research` invocation.
+- Deep: exactly one `--effort high`, one `--timeout 180`, and one
+  `--max-sources 8` on every `research` invocation, including the one permitted
+  narrower follow-up.
+
+Use fewer returned sources when they are sufficient; the fixed cap prevents
+routing drift and does not authorize padding. These are the binding command
+templates and pre-invocation checklist:
+
+```bash
+# depth-budget: synthesis
+agy-search --effort medium --timeout 120 research "$QUESTION" --max-sources 4
+
+# depth-budget: deep-primary
+agy-search --effort high --timeout 180 research "$QUESTION" --max-sources 8
+
+# depth-budget: deep-follow-up
+agy-search --effort high --timeout 180 research "$NARROWER_QUESTION" --max-sources 8
+```
+
+Before every Synthesis or Deep `research` call, compare the command token by
+token with the matching template. Do not execute until all three flags occur
+exactly once with the fixed values, including when the query is read from stdin.
+Then check that the query preserves the material gap or conflict.
+
 Commit to this bounded call plan before the first content call and do not add a
 discovery phase:
 
@@ -116,13 +150,13 @@ discovery phase:
   `temporal-comparison` search only when the first result supplies the exact
   scope and canonical source URL needed for source-body verification. Never
   repeat the standard search or use `research`.
-- Synthesis: exactly one `research`, followed by at most three `extract` calls
-  for canonical URLs returned by that research. Never add `search` or a second
-  `research`.
-- Deep: one `research`; only when its returned evidence names a material thin
-  claim or conflict, make one narrower `research`, then at most two `extract`
-  calls for returned canonical URLs. Never add `search` or exceed four content
-  calls total.
+- Synthesis: exactly one `research` with the exact `medium / 120 / 4` triplet,
+  followed by at most three `extract` calls for canonical URLs returned by that
+  research. Never add `search` or a second `research`.
+- Deep: one `research` with the exact `high / 180 / 8` triplet; only when its
+  returned evidence names a material thin claim or conflict, make one narrower
+  `research` with that same exact triplet, then at most two `extract` calls for
+  returned canonical URLs. Never add `search` or exceed four content calls total.
 
 Stop as soon as the selected plan proves the answer. A timeout, malformed
 result, or failed call is an error, not permission to repeat or broaden it.
@@ -144,9 +178,10 @@ higher-level trigger no longer applies after inspecting the task, de-escalate to
 the lowest matching level before the first content call. Keep Quick/Verified at
 `--effort low` and their small search budget. Bound the selected level from its
 first call: Quick 45 seconds, Verified 75, Synthesis 120, and Deep 180.
-Synthesis uses `--max-sources 4` and Deep uses `--max-sources 8`. A user may
-request a different explicit timeout, but never silently lengthen a timed-out
-call or repeat the same broad request.
+Synthesis uses exactly one `--max-sources 4` per Research call and Deep uses
+exactly one `--max-sources 8` per Research call, including Deep's permitted
+narrower Research follow-up. A user may request a different explicit timeout,
+but never silently lengthen a timed-out call or repeat the same broad request.
 
 The CLI derives the internal Research web-tool attempt ceiling as
 `min(max_sources + 2, 12)` so discovery and source reads fit the requested
@@ -154,11 +189,11 @@ evidence set. Failed and unfinished attempts consume that ceiling. Treat it as
 a safety limit, never as a target: do not pad calls merely because budget
 remains.
 
-Set `--max-sources` to the smallest independent evidence set that can prove the
-material claims. Two linked official pages need two sources, not eight.
-Synthesis normally needs 2-4 and Deep normally needs 6-8. Expand the budget once
-only when a required claim remains thin or sources conflict; never increase it
-merely to make the answer longer.
+Within the fixed depth cap, use the smallest independent evidence set that can
+prove the material claims. Two linked official pages may yield two sources even
+when the selected Deep command keeps its required `--max-sources 8` cap. Never
+change a selected Synthesis or Deep cap to follow the number of sources already
+found, and never pad the answer merely because the cap is larger.
 
 Judge breadth by the number of independent evidence sources required, not by
 the number of bullets in the answer. Comparing several releases or product

@@ -48,6 +48,18 @@ if [[ "${1:-}" == --version ]]; then
   printf '1.18.11\n'
   exit 0
 fi
+if [[ "${1:-}" == debug ]]; then
+  case "${2:-}" in
+    config) printf '{}\n' ;;
+    skill) printf 'agy-search\n' ;;
+    *) exit 99 ;;
+  esac
+  exit 0
+fi
+if [[ "${1:-}" == run ]]; then
+  sleep 10
+  exit 99
+fi
 exit 99
 SHIM
 chmod +x "$fake_opencode"
@@ -78,6 +90,52 @@ run_expect_failure() {
   printf '%s exit=%s\n' "$label" "$status"
 }
 
+run_expect_config_failure() {
+  local label=$1
+  local expected_status=$2
+  local expected_message=$3
+  shift 3
+  local output="$test_root/$label.output"
+  local status=0
+
+  set +e
+  "$@" >"$output" 2>&1
+  status=$?
+  set -e
+  if [[ "$status" -ne "$expected_status" ]]; then
+    printf '%s returned %s, expected %s\n' "$label" "$status" "$expected_status" >&2
+    cat "$output" >&2
+    return 1
+  fi
+  grep -F "$expected_message" "$output" >/dev/null
+  printf '%s exit=%s\n' "$label" "$status"
+}
+
+run_expect_quick_timeout() {
+  local output="$test_root/quick-timeout.output"
+  local started_at
+  local finished_at
+  local status=0
+  started_at=$(date +%s)
+  set +e
+  "$@" >"$output" 2>&1
+  status=$?
+  set -e
+  finished_at=$(date +%s)
+  if [[ "$status" -ne 124 ]]; then
+    printf 'quick timeout returned %s, expected 124\n' "$status" >&2
+    cat "$output" >&2
+    return 1
+  fi
+  grep -F 'quick routing scenario hit 1 second hard deadline' "$output" >/dev/null
+  [[ $((finished_at - started_at)) -lt 6 ]]
+  local timing_file
+  timing_file=$(find "$test_root/evidence" -path '*/quick/timing.json' -type f | sort | tail -1)
+  [[ -f "$timing_file" ]]
+  jq -e '.elapsed_seconds >= 1 and .elapsed_seconds < 6' "$timing_file" >/dev/null
+  printf 'quick hard deadline contract: PASS exit=%s\n' "$status"
+}
+
 common_env=(
   "PATH=$repo_root/node_modules/.bin:$bun_dir:$npm_dir:$jq_dir:$perl_dir:$python_dir:$bash_dir"
   "HOME=$test_root/home"
@@ -98,5 +156,16 @@ run_expect_failure bun-early 97 env -i "${common_env[@]}" \
 # OPENAI credential entries; this is the Bash 3.2/set -u regression guard.
 run_expect_failure auth-only-isolated 98 env -i "${common_env[@]}" \
   OPENCODE_ROUTING_TEST_FAILURE=isolated bash "$harness"
+
+# Keep the quick path bounded and reject malformed overrides before any live
+# model call. The default is 30 seconds, with a positive-integer override.
+run_expect_config_failure invalid-quick-ceiling 2 'positive integer' env -i "${common_env[@]}" \
+  OPENCODE_ROUTING_QUICK_MAX_SECONDS=not-a-number bash "$harness"
+run_expect_config_failure provider-key-confusion 2 \
+  'OPENCODE_LIVE_API_KEY is supported only for the openai provider' \
+  env -i "${common_env[@]}" OPENCODE_LIVE_MODEL=opencode-go/gpt-5.6-luna \
+  OPENCODE_LIVE_API_KEY=explicit-secret bash "$harness"
+run_expect_quick_timeout env -i "${common_env[@]}" \
+  OPENCODE_ROUTING_QUICK_MAX_SECONDS=1 bash "$harness"
 
 printf '%s\n' 'routing live harness fail-closed contract: PASS'

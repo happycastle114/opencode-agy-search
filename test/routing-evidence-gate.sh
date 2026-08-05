@@ -76,11 +76,20 @@ jq -se --arg case "$case_name" '
       then null
       else $argv[$index + 1]
       end;
+  def values_after($flag):
+    .argv as $argv
+    | [$argv | to_entries[] | select(.value == $flag) | .key as $index
+      | if ($index + 1) >= ($argv | length)
+        then null
+        else $argv[$index + 1]
+        end];
+  def exact_flag($flag; $expected):
+    values_after($flag) == [$expected];
   def configured($effort; $timeout):
-    value_after("--effort") == $effort
-    and value_after("--timeout") == $timeout;
+    exact_flag("--effort"; $effort)
+    and exact_flag("--timeout"; $timeout);
   def three_results:
-    (value_after("-n") // value_after("--max-results")) == "3";
+    (values_after("-n") + values_after("--max-results")) == ["3"];
   def temporal:
     ((.argv | index("--verification")) as $index
       | ($index != null and .argv[$index + 1] == "temporal-comparison"));
@@ -99,14 +108,14 @@ jq -se --arg case "$case_name" '
     and .[0].op == "research"
     and (map(select(.op == "research")) | length == 1)
     and all(.op == "research" or .op == "extract")
-    and all(.[] | select(.op == "research"); configured("medium"; "120") and value_after("--max-sources") == "4")
+    and all(.[] | select(.op == "research"); configured("medium"; "120") and exact_flag("--max-sources"; "4"))
     and all(.[] | select(.op == "extract"); any(.argv[]; startswith("http://") or startswith("https://")))
   elif $case == "deep" then
     (length >= 1 and length <= 4)
     and .[0].op == "research"
     and ((map(select(.op == "research")) | length) >= 1 and (map(select(.op == "research")) | length) <= 2)
     and all(.op == "research" or .op == "extract")
-    and all(.[] | select(.op == "research"); configured("high"; "180") and value_after("--max-sources") == "8")
+    and all(.[] | select(.op == "research"); configured("high"; "180") and exact_flag("--max-sources"; "8"))
     and all(.[] | select(.op == "extract"); any(.argv[]; startswith("http://") or startswith("https://")))
     and ((map(select(.op == "research")) | length) < 2 or
       (map(select(.op == "research"))[1].argv | any(test("(?i)(thin|conflict|expansion|follow[- ]?up|prospective)"))))

@@ -160,6 +160,55 @@ jq -c 'if any(.argv[]; . == "search") then .argv = ["--effort","medium","--timeo
 mv "$synthesis_missing_cap/next.jsonl" "$synthesis_missing_cap/agy-search-results.jsonl"
 assert_gate_rejects synthesis-missing-cap "$synthesis_missing_cap"
 
+synthesis_duplicate_cap=$(copy_named_case synthesis-duplicate-cap synthesis)
+jq -c 'if any(.[]; . == "search") then ["--effort","medium","--timeout","120","research","fixture","--max-sources","4","--max-sources","1"] else . end' \
+  "$synthesis_duplicate_cap/agy-search-argv.jsonl" >"$synthesis_duplicate_cap/next.jsonl"
+mv "$synthesis_duplicate_cap/next.jsonl" "$synthesis_duplicate_cap/agy-search-argv.jsonl"
+jq -c 'if any(.argv[]; . == "search") then .argv = ["--effort","medium","--timeout","120","research","fixture","--max-sources","4","--max-sources","1"] else . end' \
+  "$synthesis_duplicate_cap/agy-search-results.jsonl" >"$synthesis_duplicate_cap/next.jsonl"
+mv "$synthesis_duplicate_cap/next.jsonl" "$synthesis_duplicate_cap/agy-search-results.jsonl"
+assert_gate_rejects synthesis-duplicate-cap "$synthesis_duplicate_cap"
+
+synthesis_duplicate_effort=$(copy_named_case synthesis-duplicate-effort synthesis)
+jq -c 'if any(.[]; . == "search") then ["--effort","medium","--effort","low","--timeout","120","research","fixture","--max-sources","4"] else . end' \
+  "$synthesis_duplicate_effort/agy-search-argv.jsonl" >"$synthesis_duplicate_effort/next.jsonl"
+mv "$synthesis_duplicate_effort/next.jsonl" "$synthesis_duplicate_effort/agy-search-argv.jsonl"
+jq -c 'if any(.argv[]; . == "search") then .argv = ["--effort","medium","--effort","low","--timeout","120","research","fixture","--max-sources","4"] else . end' \
+  "$synthesis_duplicate_effort/agy-search-results.jsonl" >"$synthesis_duplicate_effort/next.jsonl"
+mv "$synthesis_duplicate_effort/next.jsonl" "$synthesis_duplicate_effort/agy-search-results.jsonl"
+assert_gate_rejects synthesis-duplicate-effort "$synthesis_duplicate_effort"
+
+deep_narrowed_wrong_cap=$(copy_named_case deep-narrowed-wrong-cap deep)
+jq -c 'if any(.[]; . == "search") then ["--effort","high","--timeout","180","research","fixture","--max-sources","8"] else . end' \
+  "$deep_narrowed_wrong_cap/agy-search-argv.jsonl" >"$deep_narrowed_wrong_cap/next.jsonl"
+mv "$deep_narrowed_wrong_cap/next.jsonl" "$deep_narrowed_wrong_cap/agy-search-argv.jsonl"
+jq -c 'if any(.argv[]; . == "search") then .argv = ["--effort","high","--timeout","180","research","fixture","--max-sources","8"] else . end' \
+  "$deep_narrowed_wrong_cap/agy-search-results.jsonl" >"$deep_narrowed_wrong_cap/next.jsonl"
+mv "$deep_narrowed_wrong_cap/next.jsonl" "$deep_narrowed_wrong_cap/agy-search-results.jsonl"
+printf '%s\n' '["--effort","high","--timeout","180","research","thin conflict follow-up","--max-sources","4"]' \
+  >>"$deep_narrowed_wrong_cap/agy-search-argv.jsonl"
+printf '%s\n' '{"exit_code":0,"argv":["--effort","high","--timeout","180","research","thin conflict follow-up","--max-sources","4"]}' \
+  >>"$deep_narrowed_wrong_cap/agy-search-results.jsonl"
+assert_gate_rejects deep-narrowed-wrong-cap "$deep_narrowed_wrong_cap"
+
+deep_duplicate_cap=$(copy_named_case deep-duplicate-cap deep)
+jq -c 'if any(.[]; . == "search") then ["--effort","high","--timeout","180","research","fixture","--max-sources","8","--max-sources","4"] else . end' \
+  "$deep_duplicate_cap/agy-search-argv.jsonl" >"$deep_duplicate_cap/next.jsonl"
+mv "$deep_duplicate_cap/next.jsonl" "$deep_duplicate_cap/agy-search-argv.jsonl"
+jq -c 'if any(.argv[]; . == "search") then .argv = ["--effort","high","--timeout","180","research","fixture","--max-sources","8","--max-sources","4"] else . end' \
+  "$deep_duplicate_cap/agy-search-results.jsonl" >"$deep_duplicate_cap/next.jsonl"
+mv "$deep_duplicate_cap/next.jsonl" "$deep_duplicate_cap/agy-search-results.jsonl"
+assert_gate_rejects deep-duplicate-cap "$deep_duplicate_cap"
+
+deep_duplicate_timeout=$(copy_named_case deep-duplicate-timeout deep)
+jq -c 'if any(.[]; . == "search") then ["--effort","high","--timeout","180","--timeout","120","research","fixture","--max-sources","8"] else . end' \
+  "$deep_duplicate_timeout/agy-search-argv.jsonl" >"$deep_duplicate_timeout/next.jsonl"
+mv "$deep_duplicate_timeout/next.jsonl" "$deep_duplicate_timeout/agy-search-argv.jsonl"
+jq -c 'if any(.argv[]; . == "search") then .argv = ["--effort","high","--timeout","180","--timeout","120","research","fixture","--max-sources","8"] else . end' \
+  "$deep_duplicate_timeout/agy-search-results.jsonl" >"$deep_duplicate_timeout/next.jsonl"
+mv "$deep_duplicate_timeout/next.jsonl" "$deep_duplicate_timeout/agy-search-results.jsonl"
+assert_gate_rejects deep-duplicate-timeout "$deep_duplicate_timeout"
+
 deep_over_budget=$(copy_named_case deep-over-budget deep)
 printf '%s\n' '["research","--effort","high","--timeout","180","third expansion"]' >>"$deep_over_budget/agy-search-argv.jsonl"
 printf '%s\n' '{"exit_code":0,"argv":["research","--effort","high","--timeout","180","third expansion"]}' >>"$deep_over_budget/agy-search-results.jsonl"

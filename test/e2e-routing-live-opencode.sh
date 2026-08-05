@@ -3,9 +3,10 @@ set -euo pipefail
 
 opencode_bin=${OPENCODE_BIN:-/opt/homebrew/bin/opencode}
 live_model=${OPENCODE_LIVE_MODEL:-openai/gpt-5.6-luna-fast}
+live_model_provider=${live_model%%/*}
+quick_max_elapsed_seconds=${OPENCODE_ROUTING_QUICK_MAX_SECONDS:-30}
 auth_file=${OPENCODE_AUTH_FILE:-${HOME:?}/.local/share/opencode/auth.json}
 evidence_root=${EVIDENCE_ROOT:-$PWD/.omo/evidence/current-skill-routing-live-20260806}
-live_api_key=${OPENCODE_LIVE_API_KEY:-${OPENAI_API_KEY:-}}
 script_dir=$(cd "$(dirname "$0")" && pwd -P)
 routing_evidence_gate="$script_dir/routing-evidence-gate.sh"
 routing_auth_helper="$script_dir/routing-live-auth.sh"
@@ -17,28 +18,6 @@ if [[ ! -x "$opencode_bin" ]] || [[ "$($opencode_bin --version)" != 1.18.11 ]]; 
   printf 'OpenCode 1.18.11 is required: %s\n' "$opencode_bin" >&2
   exit 2
 fi
-if [[ ! -f "$auth_file" && -z "$live_api_key" ]]; then
-  printf 'OpenCode auth file or live API key is required\n' >&2
-  exit 2
-fi
-credential_env=()
-if [[ -n "$live_api_key" ]]; then
-  credential_env+=("OPENAI_API_KEY=$live_api_key")
-fi
-if [[ -n "${OPENAI_BASE_URL:-}" ]]; then
-  credential_env+=("OPENAI_BASE_URL=$OPENAI_BASE_URL")
-fi
-
-run_isolated() {
-  if [[ "${#credential_env[@]}" -gt 0 ]]; then
-    env -i "${isolated_env[@]}" "${credential_env[@]}" "$@"
-  else
-    # Bash 3.2 raises an unbound-variable error for an empty array expanded
-    # with set -u. Keep the empty credential case out of the expansion.
-    env -i "${isolated_env[@]}" "$@"
-  fi
-}
-
 for executable in jq npm perl python3; do
   command -v "$executable" >/dev/null || {
     printf 'required executable is unavailable: %s\n' "$executable" >&2
@@ -55,6 +34,37 @@ done
 }
 # shellcheck source=routing-live-auth.sh
 source "$routing_auth_helper"
+if ! live_api_key=$(resolve_live_api_key_for_provider \
+  "$live_model_provider" \
+  "${OPENCODE_LIVE_API_KEY:-}" \
+  "${OPENAI_API_KEY:-}"); then
+  exit 2
+fi
+if ! [[ "$quick_max_elapsed_seconds" =~ ^[1-9][0-9]*$ ]]; then
+  printf 'OPENCODE_ROUTING_QUICK_MAX_SECONDS must be a positive integer\n' >&2
+  exit 2
+fi
+if [[ ! -f "$auth_file" && -z "$live_api_key" ]]; then
+  printf 'OpenCode auth file or live API key is required\n' >&2
+  exit 2
+fi
+credential_env=()
+if [[ -n "$live_api_key" ]]; then
+  credential_env+=("OPENAI_API_KEY=$live_api_key")
+fi
+if [[ "$live_model_provider" == openai && -n "${OPENAI_BASE_URL:-}" ]]; then
+  credential_env+=("OPENAI_BASE_URL=$OPENAI_BASE_URL")
+fi
+
+run_isolated() {
+  if [[ "${#credential_env[@]}" -gt 0 ]]; then
+    env -i "${isolated_env[@]}" "${credential_env[@]}" "$@"
+  else
+    # Bash 3.2 raises an unbound-variable error for an empty array expanded
+    # with set -u. Keep the empty credential case out of the expansion.
+    env -i "${isolated_env[@]}" "$@"
+  fi
+}
 
 # Test-only failure injection lets the harness contract prove that both this
 # script and its Bun wrapper fail closed without contacting a model. It is
@@ -103,7 +113,7 @@ tar -xzf "$plugin_tarball" -C "$e2e_root/package"
 plugin_root="$e2e_root/package/package"
 plugin_entry="$plugin_root/index.ts"
 skill_directory="$plugin_root/skills/agy-search"
-jq -e '.version == "0.3.3"' "$plugin_root/package.json" >/dev/null
+jq -e '.version == "0.3.4"' "$plugin_root/package.json" >/dev/null
 [[ -f "$plugin_entry" && -f "$skill_directory/SKILL.md" ]]
 cp "$plugin_root/package.json" "$run_dir/packed-package.json"
 shasum -a 256 "$skill_directory/SKILL.md" >"$run_dir/packed-skill.sha256"
@@ -190,7 +200,8 @@ for index in "${!case_names[@]}"; do
   case_root="$e2e_root/$case_name"
   case_evidence="$run_dir/$case_name"
   mkdir -p "$case_root"/{config,home,tmp,workspace,xdg/cache,xdg/config,xdg/data/opencode,xdg/state} "$case_evidence"
-  link_opencode_auth_without_env_key \
+  link_opencode_auth_for_provider \
+    "$live_model_provider" \
     "$live_api_key" \
     "$auth_file" \
     "$case_root/xdg/data/opencode/auth.json"
@@ -234,22 +245,37 @@ for index in "${!case_names[@]}"; do
     run_isolated "$opencode_bin" debug skill >"$run_dir/debug-skill.txt"
   fi
   case_started_at=$(date +%s)
+  case_process_timeout=240
+  if [[ "$case_name" == quick ]]; then
+    case_process_timeout=$quick_max_elapsed_seconds
+  fi
   case_status=0
   set +e
   (
     cd "$case_root/workspace"
-    run_isolated perl -e 'alarm shift; exec @ARGV' 240 \
+    run_isolated perl -e 'alarm shift; exec @ARGV' "$case_process_timeout" \
       "$opencode_bin" run --model "$live_model" --format json "${prompts[$index]}" \
       >"$case_evidence/opencode.jsonl" 2>"$case_evidence/opencode.stderr"
   )
   case_status=$?
   set -e
+  case_finished_at=$(date +%s)
+  case_elapsed_seconds=$((case_finished_at - case_started_at))
+  jq -n --argjson started "$case_started_at" --argjson finished "$case_finished_at" --argjson elapsed "$case_elapsed_seconds" '{started_at_epoch:$started,finished_at_epoch:$finished,elapsed_seconds:$elapsed}' >"$case_evidence/timing.json"
   if [[ "$case_status" -ne 0 ]]; then
+    if [[ "$case_name" == quick && "$case_status" -eq 142 ]]; then
+      printf 'quick routing scenario hit %s second hard deadline\n' \
+        "$quick_max_elapsed_seconds" >&2
+      exit 124
+    fi
     printf 'routing scenario %s failed with exit %s\n' "$case_name" "$case_status" >&2
     exit "$case_status"
   fi
-  case_finished_at=$(date +%s)
-  jq -n --argjson started "$case_started_at" --argjson finished "$case_finished_at" '{started_at_epoch:$started,finished_at_epoch:$finished,elapsed_seconds:($finished-$started)}' >"$case_evidence/timing.json"
+  if [[ "$case_name" == quick && "$case_elapsed_seconds" -gt "$quick_max_elapsed_seconds" ]]; then
+    printf 'quick routing scenario exceeded %s second ceiling: %s seconds\n' \
+      "$quick_max_elapsed_seconds" "$case_elapsed_seconds" >&2
+    exit 124
+  fi
 done
 
 grep -F "$plugin_entry" "$run_dir/resolved-config.json" >/dev/null
@@ -264,4 +290,4 @@ for case_name in "${case_names[@]}"; do
 done
 [[ "$(sort -u "$run_dir/session-ids.txt" | wc -l | tr -d ' ')" == 4 ]]
 
-jq -n --arg model "$live_model" --arg evidence "$run_dir" '{result:"PASS",proof:"live_model_routing_with_fixture_cli",accuracy_proof:false,opencode_version:"1.18.11",model:$model,packed_plugin_version:"0.3.3",fresh_sessions:4,cases:{quick:"PASS",verified:"PASS",synthesis:"PASS",deep:"PASS"},evidence:$evidence}' | tee "$run_dir/summary.json"
+jq -n --arg model "$live_model" --arg evidence "$run_dir" '{result:"PASS",proof:"live_model_routing_with_fixture_cli",accuracy_proof:false,opencode_version:"1.18.11",model:$model,packed_plugin_version:"0.3.4",fresh_sessions:4,cases:{quick:"PASS",verified:"PASS",synthesis:"PASS",deep:"PASS"},evidence:$evidence}' | tee "$run_dir/summary.json"
