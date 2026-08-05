@@ -15,7 +15,7 @@ const EXPECTED_RUNTIME_FILES = [
 describe("public npm package contract", () => {
   test("uses an explicit runtime allowlist and exact development pins", () => {
     expect(metadata.name).toBe("@happycastle114/opencode-agy-search")
-    expect(metadata.version).toBe("0.3.0")
+    expect(metadata.version).toBe("0.3.1")
     expect(metadata.files).toEqual([
       "index.ts",
       "skills",

@@ -1,6 +1,6 @@
 # agy-search dependency rule
 
-Before using the `agy-search` skill, verify `agy-search --version` reports 0.2.2
+Before using the `agy-search` skill, verify `agy-search --version` reports 0.2.3
 or newer and `agy --version` reports 1.1.10 or newer, then run both
 `command -v agy-search` and `agy-search status`. If any check fails, explain the
 missing prerequisite and stop.

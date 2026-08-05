@@ -29,6 +29,7 @@ jobs:
       - run: bun run typecheck
       - run: bun test
       - run: bun run test:install
+      - run: bun run test:e2e
       - name: Verify immutable release identity
         run: |
           package_version=$(node -p "require('./package.json').version")
