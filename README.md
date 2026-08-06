@@ -10,7 +10,7 @@ schemas, provenance checks, JSON output, and exit codes.
 ## Requirements
 
 - OpenCode 1.18.11
-- `agy-search` 0.2.5 on `PATH`
+- `agy-search` 0.2.6 on `PATH`
 - `curl` for bounded grounding-link resolution and opt-in temporal source checks
 - Google Antigravity CLI 1.1.10 or newer, signed in with web tools available
 
@@ -24,8 +24,11 @@ agy-search --version
 agy --version
 ```
 
-Do not run model discovery for ordinary searches. The core enforces the same
-Antigravity floor before content and `status`.
+Ordinary searches must omit both `agy-search models` and `--model`. CLI 0.2.6
+performs its own bounded advisory catalog lookup and prefers the exact
+`gemini-3.6-flash-low` slug when present; that internal preference is not a
+caller model pin. The core enforces the same Antigravity floor before content
+and `status`.
 
 For installation/update verification, then run:
 
@@ -107,8 +110,10 @@ all-or-nothing recovery across the caller-owned scopes; temporal research
 remains one-shot. Both fail closed unless every declared scope/value/date tuple
 binds to a safely fetched declared source body. Temporal results require
 `last_updated: null` because the current verifier binds publication dates, not
-modification dates; standard date metadata remains best effort. Standard
-searches add no source fetch, preserving the fast default. A cutoff permits strong caller-owned first
+modification dates. In Standard Search, `date` is optional; a valid date that
+cannot bind to evidence is emitted as `null`, while malformed dates remain
+invalid. Research and temporal dates remain strict. Standard searches add no
+source fetch, preserving the fast default. A cutoff permits strong caller-owned first
 rows to replace a wrong model value/date only when every declared scope is at or
 before the cutoff; otherwise Search performs the complete scoped fallback.
 Without a cutoff, primary-value anchoring remains.
@@ -128,13 +133,15 @@ unavailable, it stops and reports mechanical enforcement is impossible, or does
 only user-permitted discovery as unverified candidates. Antigravity cannot
 guarantee that no third-party snippet was ever viewed. Conclusions beyond
 returned source text are labeled `Inference:`.
-Ordinary work omits `--model`; an explicit returned model slug ending `-low`,
-`-medium`, or `-high` must use matching `--effort`.
+Ordinary work omits both `agy-search models` and `--model`; CLI 0.2.6 performs
+its bounded advisory catalog lookup internally and prefers exact
+`gemini-3.6-flash-low` when present. An explicit returned model slug ending
+`-low`, `-medium`, or `-high` must use matching `--effort`.
 
 ## GitHub Packages
 
 The same JavaScript package is published publicly as
-`@happycastle114/opencode-agy-search@0.3.6` at GitHub Packages. GitHub's npm
+`@happycastle114/opencode-agy-search@0.3.7` at GitHub Packages. GitHub's npm
 registry requires a classic personal access token with `read:packages` even for
 public packages, so this is the authenticated package-manager channel rather
 than the public one-liner channel.

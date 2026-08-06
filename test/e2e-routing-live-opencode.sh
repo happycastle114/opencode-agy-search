@@ -113,7 +113,7 @@ tar -xzf "$plugin_tarball" -C "$e2e_root/package"
 plugin_root="$e2e_root/package/package"
 plugin_entry="$plugin_root/index.ts"
 skill_directory="$plugin_root/skills/agy-search"
-jq -e '.version == "0.3.6"' "$plugin_root/package.json" >/dev/null
+jq -e '.version == "0.3.7"' "$plugin_root/package.json" >/dev/null
 [[ -f "$plugin_entry" && -f "$skill_directory/SKILL.md" ]]
 cp "$plugin_root/package.json" "$run_dir/packed-package.json"
 shasum -a 256 "$skill_directory/SKILL.md" >"$run_dir/packed-skill.sha256"
@@ -137,7 +137,7 @@ record_exit() {
 trap record_exit EXIT
 jq -cn --args '$ARGS.positional' -- "$@" >>"$AGY_ROUTING_ARGV_LOG"
 if [[ "${1:-}" == "--version" ]]; then
-  printf 'agy-search 0.2.5\n'
+  printf 'agy-search 0.2.6\n'
   exit 0
 fi
 command_name=
@@ -290,4 +290,4 @@ for case_name in "${case_names[@]}"; do
 done
 [[ "$(sort -u "$run_dir/session-ids.txt" | wc -l | tr -d ' ')" == 4 ]]
 
-jq -n --arg model "$live_model" --arg evidence "$run_dir" '{result:"PASS",proof:"live_model_routing_with_fixture_cli",accuracy_proof:false,opencode_version:"1.18.11",model:$model,packed_plugin_version:"0.3.6",fresh_sessions:4,cases:{quick_preference:"PASS",verified:"PASS",synthesis:"PASS",deep:"PASS"},evidence:$evidence}' | tee "$run_dir/summary.json"
+jq -n --arg model "$live_model" --arg evidence "$run_dir" '{result:"PASS",proof:"live_model_routing_with_fixture_cli",accuracy_proof:false,opencode_version:"1.18.11",model:$model,packed_plugin_version:"0.3.7",fresh_sessions:4,cases:{quick_preference:"PASS",verified:"PASS",synthesis:"PASS",deep:"PASS"},evidence:$evidence}' | tee "$run_dir/summary.json"

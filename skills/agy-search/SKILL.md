@@ -11,8 +11,8 @@ escalate only when the evidence is insufficient.
 ## Preflight
 
 Run only the cheap local checks once before the first research command in the
-current agent session. Do not launch downstream model discovery on the normal
-un-pinned search path:
+current agent session. Require agy-search 0.2.6 or newer. On the normal
+un-pinned search path, do not invoke `agy-search models` or pass `--model`:
 
 ```bash
 command -v agy-search
@@ -34,9 +34,12 @@ curl --proto '=https' --tlsv1.2 -LsSf \
 Do not silently switch providers. After installation, repeat the cheap
 preflight. Run `agy-search status` only to diagnose availability or verify an
 install/update, not before each search. Run `agy-search models` once before
-explicitly pinning a model; omit `--model` on ordinary searches and never invent
-or cache a model slug. If the selected returned slug ends in `-low`, `-medium`,
-or `-high`, pass the matching `--effort` value. A mismatched suffix is invalid.
+explicitly pinning a model; ordinary searches omit both `models` and `--model`.
+CLI 0.2.6 internally performs a bounded advisory catalog lookup and prefers
+exact `gemini-3.6-flash-low` when present without creating a caller model pin;
+never invent or cache a model slug. If the selected returned slug ends in
+`-low`, `-medium`, or `-high`, pass the matching `--effort` value. A mismatched
+suffix is invalid.
 
 The supported Antigravity floor is 1.1.10. Verify `agy --version` once in this
 preflight; the core accepts only bare `X.Y.Z` output and rejects a bare semantic
@@ -165,8 +168,10 @@ Quick and Verified both start at low effort and use `-n 3`. Their difference is
 the evidence contract and timeout, not extra model thinking. Source-body verification,
 exact scopes, and canonical URLs provide temporal accuracy. Reserve medium for
 Synthesis and high for Deep unless the user explicitly overrides effort.
-Ordinary work omits `--model`; only an explicit model pin needs fresh discovery
-and its suffix-matched effort.
+Ordinary work omits both `agy-search models` and `--model`; CLI 0.2.6 performs
+its bounded advisory catalog lookup internally and prefers exact
+`gemini-3.6-flash-low` when present. Only an explicit model pin needs fresh
+discovery and its suffix-matched effort.
 
 Routing is deliberately lowest-sufficient-depth: default to Quick for one
 stable factual lookup, choose Verified for a factual/current claim that needs a
@@ -248,6 +253,11 @@ scope is temporal source verification, not a comparison or a global inventory
 claim. A request for each of several independent sources' current releases,
 parallel status, or tradeoffs remains standard `research`; it does not ask for
 one global winner.
+
+Standard Search treats `date` as optional. A valid date that cannot bind to
+evidence is normalized to `null`; malformed dates are rejected. Standard
+Research and temporal comparison keep strict date handling, so do not infer,
+repair, or relax dates outside Standard Search.
 
 For a true temporal comparison, pass every exact caller-owned scope plus every
 canonical HTTPS source page. A scope label must either be supplied exactly by
