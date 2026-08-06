@@ -2,8 +2,9 @@
 
 ## Global contract
 
-Before the first content command in an agent session, use this cheap local
-preflight and do not discover models unless an explicit pin is requested:
+Before the first content command in an agent session, require agy-search 0.2.6
+or newer and use this cheap local preflight. Do not invoke `agy-search models`
+unless an explicit pin is requested:
 
 ```bash
 command -v agy-search
@@ -23,12 +24,15 @@ agy-search [--agy-path PATH] [--model SLUG] [--effort low|medium|high] \
 - Set `AGY_SEARCH_AGY_PATH` instead of `--agy-path` when appropriate.
 - Set `AGY_SEARCH_CURL_PATH` only when the default `curl` executable is not the
   intended grounding-link resolver/source verifier.
-- Discover `SLUG` with `agy-search models` in the current environment.
+- Discover `SLUG` with `agy-search models` only for an explicit model pin in
+  the current environment.
 - Content commands default to `--effort low`. Raise effort only for deliberate
   deep synthesis; explicit effort always overrides the default.
-- Ordinary work omits `--model`. For an explicit pin whose returned slug ends
-  in `-low`, `-medium`, or `-high`, pass the matching `--effort`; a mismatch is
-  rejected before downstream execution.
+- Ordinary work omits both `agy-search models` and `--model`. CLI 0.2.6
+  performs a bounded advisory catalog lookup internally and prefers exact
+  `gemini-3.6-flash-low` when present without creating a caller model pin. For
+  an explicit pin whose returned slug ends in `-low`, `-medium`, or `-high`, pass
+  the matching `--effort`; a mismatch is rejected before downstream execution.
 - Verification defaults to `standard`. Use `temporal-comparison` for an exact
   latest/current tuple or ordered as-of-latest work across a caller-declared
   set. Search and research then require 1-8 unique `--scope` values and 1-8
@@ -47,6 +51,9 @@ agy-search [--agy-path PATH] [--model SLUG] [--effort low|medium|high] \
   to four research-tool calls and never uses per-scope recovery.
 - Successful stdout is canonical JSON. Diagnostics use stderr. `--json` is an
   accepted explicit compatibility flag on every subcommand.
+- In Standard Search, `date` is optional: normalize a valid date that cannot
+  bind to evidence to `null`, while rejecting malformed dates. Standard
+  Research and temporal comparison keep strict date handling.
 - Add `-o PATH` to atomically write JSON and keep stdout empty.
 - Use query `-` to read up to 100 KiB from stdin for `search` and `research`.
 - Antigravity 1.1.10 or newer is required. Before content and `status`, the
@@ -154,12 +161,13 @@ snippet was ever viewed during search.
   `sources[{title,url,snippet,date,last_updated}]`
 
 For source metadata, `date` is an explicit publication/release date and
-`last_updated` is an explicit modification/update date. `date` is `null` only
-when the source lacks an explicit publication/release date; never infer it from
-`last_updated`, execution, crawl, fetch, query, or cutoff time. Standard mode
-treats both fields as best-effort source metadata. Temporal comparison verifies
-publication dates only, requires `last_updated: null`, and rejects a non-null
-update value with exit 6.
+`last_updated` is an explicit modification/update date. In Standard Search,
+`date` is optional: a valid date that cannot bind to evidence becomes `null`,
+and a malformed date is rejected. Never infer a date from `last_updated`,
+execution, crawl, fetch, query, or cutoff time. Standard Research and temporal
+comparison retain strict date handling. Temporal comparison verifies publication
+dates only, requires `last_updated: null`, and rejects a non-null update value
+with exit 6.
 
 Search and research schemas also require an internal evidence audit with at
 least one candidate and one candidate per requested scope. The wrapper validates
@@ -180,10 +188,11 @@ its multiple public sources, requires every candidate's value and exact
 source-date text in a same-URL source, requires each structured source date to
 be ISO and audit-backed, and requires the unique latest candidate to remain
 publicly visible; it is one-shot and never recovers or emits a partial report.
-Google grounding transport links are resolved with bounded, HTTPS-only curl
-arguments before validation; only the direct final URL can reach public JSON.
-Each manual redirect hop is parsed, DNS-validated, and pinned before the next
-request.
+Every Standard Search result and audit URL is validated with bounded,
+HTTPS-only, header-only curl arguments. Google grounding transports are
+resolved; direct URLs are probed; dead, unsafe, regional Google search, and
+cache rows are discarded with their audit rows. Each redirect hop is parsed,
+DNS-validated, and pinned before the next request.
 
 Preserve a hard caller constraint such as `only official`, `only first-party`,
 or `only project-maintained` in the query. Do not infer ownership from a domain
