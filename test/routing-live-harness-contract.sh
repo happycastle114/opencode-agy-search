@@ -130,7 +130,7 @@ run_expect_quick_timeout() {
   grep -F 'quick routing scenario hit 1 second hard deadline' "$output" >/dev/null
   [[ $((finished_at - started_at)) -lt 6 ]]
   local timing_file
-  timing_file=$(find "$test_root/evidence" -path '*/quick/timing.json' -type f | sort | tail -1)
+  timing_file=$(find "$test_root/evidence" -path '*/quick-preference/timing.json' -type f | sort | tail -1)
   [[ -f "$timing_file" ]]
   jq -e '.elapsed_seconds >= 1 and .elapsed_seconds < 6' "$timing_file" >/dev/null
   printf 'quick hard deadline contract: PASS exit=%s\n' "$status"

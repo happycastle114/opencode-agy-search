@@ -116,21 +116,25 @@ Without a cutoff, primary-value anchoring remains.
 For Search and Research, `--domain` is the canonical caller-owned domain-tree allowlist
 and `--source-url` is the canonical exact-URL allowlist. Standard exact URLs
 restrict membership only and do not fetch source bodies; temporal exact URLs are
-fetched/verified and dominate same-domain paths. The skill preserves hard caller
-source constraints such as `only official`, `only first-party`, and
-`only project-maintained`: it MUST pass explicitly trusted domains/URLs, but does
-not infer ownership from a domain or name because flags prove membership only.
-If the exact trust set is unavailable, it stops and reports mechanical
-enforcement is impossible, or does only user-permitted discovery as unverified
-candidates. Antigravity cannot guarantee that no third-party snippet was ever
-viewed. Conclusions beyond returned source text are labeled `Inference:`.
+fetched/verified and dominate same-domain paths. Preferences such as `prefer`,
+`prioritize`, `favor`, or a primary-source preference change query prose and
+result ranking only; they never create an allowlist. The skill passes
+`--domain` or `--source-url` only for an explicit exclusive source constraint
+or an explicitly supplied trusted set. For hard caller source constraints such
+as `only official`, `only first-party`, and `only project-maintained`, it MUST
+pass explicitly trusted domains/URLs, but does not infer ownership from a domain
+or name because flags prove membership only. If the exact trust set is
+unavailable, it stops and reports mechanical enforcement is impossible, or does
+only user-permitted discovery as unverified candidates. Antigravity cannot
+guarantee that no third-party snippet was ever viewed. Conclusions beyond
+returned source text are labeled `Inference:`.
 Ordinary work omits `--model`; an explicit returned model slug ending `-low`,
 `-medium`, or `-high` must use matching `--effort`.
 
 ## GitHub Packages
 
 The same JavaScript package is published publicly as
-`@happycastle114/opencode-agy-search@0.3.5` at GitHub Packages. GitHub's npm
+`@happycastle114/opencode-agy-search@0.3.6` at GitHub Packages. GitHub's npm
 registry requires a classic personal access token with `read:packages` even for
 public packages, so this is the authenticated package-manager channel rather
 than the public one-liner channel.

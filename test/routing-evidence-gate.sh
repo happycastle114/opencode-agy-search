@@ -13,7 +13,7 @@ if [[ ! -d "$case_evidence" ]]; then
 fi
 case_name=$(basename "$case_evidence")
 case "$case_name" in
-  quick|verified|synthesis|deep) ;;
+  quick|quick-preference|verified|synthesis|deep) ;;
   *)
     printf 'unknown routing case: %s\n' "$case_name" >&2
     exit 64
@@ -93,10 +93,19 @@ jq -se --arg case "$case_name" '
   def temporal:
     ((.argv | index("--verification")) as $index
       | ($index != null and .argv[$index + 1] == "temporal-comparison"));
+  def quick_depth:
+    length == 1
+    and all(.op == "search" and configured("low"; "45") and three_results);
+  def no_allowlist:
+    all(.argv[]; . != "--domain" and . != "--source-url"
+      and (startswith("--domain=") | not)
+      and (startswith("--source-url=") | not));
   [.[1:][] | {argv: ., op: operation}] as $calls
   | ($calls | all(.op != null))
   and ($calls | if $case == "quick" then
-    (length == 1 and all(.op == "search" and configured("low"; "45") and three_results))
+    quick_depth
+  elif $case == "quick-preference" then
+    quick_depth and all(no_allowlist)
   elif $case == "verified" then
     (length >= 1 and length <= 2)
     and all(.op == "search" and configured("low"; "75") and three_results)

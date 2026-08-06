@@ -135,6 +135,49 @@ printf '%s\n' '["extract","https://example.com/extra"]' >>"$quick_over_budget/ag
 printf '%s\n' '{"exit_code":0,"argv":["extract","https://example.com/extra"]}' >>"$quick_over_budget/agy-search-results.jsonl"
 assert_gate_rejects quick-over-budget "$quick_over_budget"
 
+valid_hard_quick=$(copy_named_case valid-hard-quick quick)
+jq -c 'if any(.[]; . == "search") then . + ["--domain", "iana.org"] else . end' \
+  "$valid_hard_quick/agy-search-argv.jsonl" >"$valid_hard_quick/next.jsonl"
+mv "$valid_hard_quick/next.jsonl" "$valid_hard_quick/agy-search-argv.jsonl"
+jq -c 'if any(.argv[]; . == "search") then .argv += ["--domain", "iana.org"] else . end' \
+  "$valid_hard_quick/agy-search-results.jsonl" >"$valid_hard_quick/next.jsonl"
+mv "$valid_hard_quick/next.jsonl" "$valid_hard_quick/agy-search-results.jsonl"
+bash "$gate" "$valid_hard_quick" >"$test_root/valid-hard-quick.stdout" 2>"$test_root/valid-hard-quick.stderr"
+printf '%s\n' 'routing evidence gate acceptance observed: valid-hard-quick'
+
+valid_hard_quick_url=$(copy_named_case valid-hard-quick-url quick)
+jq -c 'if any(.[]; . == "search") then . + ["--source-url", "https://www.iana.org/"] else . end' \
+  "$valid_hard_quick_url/agy-search-argv.jsonl" >"$valid_hard_quick_url/next.jsonl"
+mv "$valid_hard_quick_url/next.jsonl" "$valid_hard_quick_url/agy-search-argv.jsonl"
+jq -c 'if any(.argv[]; . == "search") then .argv += ["--source-url", "https://www.iana.org/"] else . end' \
+  "$valid_hard_quick_url/agy-search-results.jsonl" >"$valid_hard_quick_url/next.jsonl"
+mv "$valid_hard_quick_url/next.jsonl" "$valid_hard_quick_url/agy-search-results.jsonl"
+bash "$gate" "$valid_hard_quick_url" \
+  >"$test_root/valid-hard-quick-url.stdout" 2>"$test_root/valid-hard-quick-url.stderr"
+printf '%s\n' 'routing evidence gate acceptance observed: valid-hard-quick-url'
+
+assert_quick_allowlist_rejected() {
+  local name=$1
+  local suffix=$2
+  local evidence
+  evidence=$(copy_named_case "$name" quick-preference)
+  jq -c --argjson suffix "$suffix" \
+    'if any(.[]; . == "search") then . + $suffix else . end' \
+    "$evidence/agy-search-argv.jsonl" >"$evidence/next.jsonl"
+  mv "$evidence/next.jsonl" "$evidence/agy-search-argv.jsonl"
+  jq -c --argjson suffix "$suffix" \
+    'if any(.argv[]; . == "search") then .argv += $suffix else . end' \
+    "$evidence/agy-search-results.jsonl" >"$evidence/next.jsonl"
+  mv "$evidence/next.jsonl" "$evidence/agy-search-results.jsonl"
+  assert_gate_rejects "$name" "$evidence"
+}
+
+assert_quick_allowlist_rejected quick-preference-domain '["--domain", "iana.org"]'
+assert_quick_allowlist_rejected quick-preference-domain-equals '["--domain=iana.org"]'
+assert_quick_allowlist_rejected quick-preference-source-url '["--source-url", "https://www.iana.org/"]'
+assert_quick_allowlist_rejected quick-preference-source-url-equals \
+  '["--source-url=https://www.iana.org/"]'
+
 verified_wrong_operation=$(copy_named_case verified-wrong-operation verified)
 printf '%s\n' '["research","--effort","medium","--timeout","120","fixture"]' >>"$verified_wrong_operation/agy-search-argv.jsonl"
 printf '%s\n' '{"exit_code":0,"argv":["research","--effort","medium","--timeout","120","fixture"]}' >>"$verified_wrong_operation/agy-search-results.jsonl"

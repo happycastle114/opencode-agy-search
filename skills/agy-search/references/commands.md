@@ -130,12 +130,16 @@ internal-audit URL membership only; it does not fetch or verify the URL body.
 In temporal comparison, every declared exact HTTPS `--source-url` is fetched
 and verified, and an exact URL dominates any same-domain path that `--domain`
 would otherwise allow. Both flags prove membership, not official, first-party,
-or project-maintained ownership. For such hard source-class requests, you MUST
-pass only explicitly trusted domains/URLs and preserve the class in the query. If the
-exact trust set is unavailable, stop and report mechanical enforcement is
-impossible, or perform only user-permitted discovery with clearly unverified
-candidates. Antigravity cannot guarantee that no third-party snippet was ever
-viewed during search.
+or project-maintained ownership. Preference wording (`prefer`, `prioritize`,
+`favor`, or a primary-source preference) affects query prose and result ranking
+only; it MUST NOT create either allowlist, even for a named organization or
+page. Pass an allowlist only for an explicit exclusive hard constraint or an
+explicit caller-supplied trusted domain/URL set. For hard source-class requests,
+you MUST pass only explicitly trusted domains/URLs and preserve the class in
+the query. If the exact trust set is unavailable, stop and report mechanical
+enforcement is impossible, or perform only user-permitted discovery with
+clearly unverified candidates. Antigravity cannot guarantee that no third-party
+snippet was ever viewed during search.
 
 ## Response shapes
 

@@ -207,6 +207,16 @@ otherwise retain every named entity, requested scope, cutoff date, and exact
 field. Never shorten it to a generic discovery query such as "official
 changelog release notes".
 
+Preferences are not caller-owned allowlists. `prefer`, `prioritize`, and
+`favor` (including a preference for primary sources or a named organization's
+own page) affect only query prose and result ranking. They MUST NOT create
+`--domain` or `--source-url`, even when the preferred organization or page is
+named. Add either flag only when the caller explicitly makes the source set an
+exclusive hard constraint, or explicitly supplies the trusted domains or exact
+URLs that define the set. For example, “Prefer IANA, but other sources are
+allowed” remains an unrestricted Quick search; “only IANA” requires a
+caller-owned IANA trust set before an allowlist can be passed.
+
 Treat `only official`, `only first-party`, and `only project-maintained` as hard
 caller constraints. Keep the exact source-class restriction in the command
 query and pass every explicitly trusted domain tree with `--domain DOMAIN` or

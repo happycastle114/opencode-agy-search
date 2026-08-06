@@ -113,7 +113,7 @@ tar -xzf "$plugin_tarball" -C "$e2e_root/package"
 plugin_root="$e2e_root/package/package"
 plugin_entry="$plugin_root/index.ts"
 skill_directory="$plugin_root/skills/agy-search"
-jq -e '.version == "0.3.5"' "$plugin_root/package.json" >/dev/null
+jq -e '.version == "0.3.6"' "$plugin_root/package.json" >/dev/null
 [[ -f "$plugin_entry" && -f "$skill_directory/SKILL.md" ]]
 cp "$plugin_root/package.json" "$run_dir/packed-package.json"
 shasum -a 256 "$skill_directory/SKILL.md" >"$run_dir/packed-skill.sha256"
@@ -186,9 +186,9 @@ printf '1.1.10\n'
 SHIM
 chmod +x "$e2e_root/bin/agy-search" "$e2e_root/bin/agy"
 
-case_names=(quick verified synthesis deep)
+case_names=(quick-preference verified synthesis deep)
 prompts=(
-  'Use the agy-search skill and complete this task: What is the capital of France?'
+  'Use the agy-search skill and complete this task: What is IANA? Prefer IANA, but other sources are allowed.'
   'Use the agy-search skill and complete this task: As of 2026-08-06, what is the current stable release version of Bun?'
   'Use the agy-search skill and complete this task: Compare Bun and Node.js for a backend team on Node API compatibility and release support, combining independent sources.'
   'Use the agy-search skill and complete this task: For a high-stakes hospital decision with conflicting evidence, assess autonomous AI diagnosis versus monitored clinician decision support.'
@@ -246,7 +246,7 @@ for index in "${!case_names[@]}"; do
   fi
   case_started_at=$(date +%s)
   case_process_timeout=240
-  if [[ "$case_name" == quick ]]; then
+  if [[ "$case_name" == quick-preference ]]; then
     case_process_timeout=$quick_max_elapsed_seconds
   fi
   case_status=0
@@ -263,7 +263,7 @@ for index in "${!case_names[@]}"; do
   case_elapsed_seconds=$((case_finished_at - case_started_at))
   jq -n --argjson started "$case_started_at" --argjson finished "$case_finished_at" --argjson elapsed "$case_elapsed_seconds" '{started_at_epoch:$started,finished_at_epoch:$finished,elapsed_seconds:$elapsed}' >"$case_evidence/timing.json"
   if [[ "$case_status" -ne 0 ]]; then
-    if [[ "$case_name" == quick && "$case_status" -eq 142 ]]; then
+    if [[ "$case_name" == quick-preference && "$case_status" -eq 142 ]]; then
       printf 'quick routing scenario hit %s second hard deadline\n' \
         "$quick_max_elapsed_seconds" >&2
       exit 124
@@ -271,7 +271,7 @@ for index in "${!case_names[@]}"; do
     printf 'routing scenario %s failed with exit %s\n' "$case_name" "$case_status" >&2
     exit "$case_status"
   fi
-  if [[ "$case_name" == quick && "$case_elapsed_seconds" -gt "$quick_max_elapsed_seconds" ]]; then
+  if [[ "$case_name" == quick-preference && "$case_elapsed_seconds" -gt "$quick_max_elapsed_seconds" ]]; then
     printf 'quick routing scenario exceeded %s second ceiling: %s seconds\n' \
       "$quick_max_elapsed_seconds" "$case_elapsed_seconds" >&2
     exit 124
@@ -290,4 +290,4 @@ for case_name in "${case_names[@]}"; do
 done
 [[ "$(sort -u "$run_dir/session-ids.txt" | wc -l | tr -d ' ')" == 4 ]]
 
-jq -n --arg model "$live_model" --arg evidence "$run_dir" '{result:"PASS",proof:"live_model_routing_with_fixture_cli",accuracy_proof:false,opencode_version:"1.18.11",model:$model,packed_plugin_version:"0.3.5",fresh_sessions:4,cases:{quick:"PASS",verified:"PASS",synthesis:"PASS",deep:"PASS"},evidence:$evidence}' | tee "$run_dir/summary.json"
+jq -n --arg model "$live_model" --arg evidence "$run_dir" '{result:"PASS",proof:"live_model_routing_with_fixture_cli",accuracy_proof:false,opencode_version:"1.18.11",model:$model,packed_plugin_version:"0.3.6",fresh_sessions:4,cases:{quick_preference:"PASS",verified:"PASS",synthesis:"PASS",deep:"PASS"},evidence:$evidence}' | tee "$run_dir/summary.json"
