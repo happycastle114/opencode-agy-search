@@ -10,7 +10,7 @@ schemas, provenance checks, JSON output, and exit codes.
 ## Requirements
 
 - OpenCode 1.18.11
-- `agy-search` 0.2.4 on `PATH`
+- `agy-search` 0.2.5 on `PATH`
 - `curl` for bounded grounding-link resolution and opt-in temporal source checks
 - Google Antigravity CLI 1.1.10 or newer, signed in with web tools available
 
@@ -130,7 +130,7 @@ Ordinary work omits `--model`; an explicit returned model slug ending `-low`,
 ## GitHub Packages
 
 The same JavaScript package is published publicly as
-`@happycastle114/opencode-agy-search@0.3.4` at GitHub Packages. GitHub's npm
+`@happycastle114/opencode-agy-search@0.3.5` at GitHub Packages. GitHub's npm
 registry requires a classic personal access token with `read:packages` even for
 public packages, so this is the authenticated package-manager channel rather
 than the public one-liner channel.

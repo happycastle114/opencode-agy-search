@@ -2,7 +2,7 @@
 
 Before the first `agy-search` command in an agent session, run only
 `command -v agy-search`, `command -v agy`, `command -v curl`,
-`agy-search --version`, and `agy --version`. Require agy-search 0.2.4 or newer.
+`agy-search --version`, and `agy --version`. Require agy-search 0.2.5 or newer.
 If a check fails, explain the missing prerequisite and stop. Do not run
 `agy-search status` or `agy-search models` as ordinary preflight; they start
 downstream discovery and make simple searches slower.
