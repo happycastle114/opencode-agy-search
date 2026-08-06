@@ -113,7 +113,11 @@ binds to a safely fetched declared source body. Temporal results require
 modification dates. In Standard Search, `date` is optional; a valid date that
 cannot bind to evidence is emitted as `null`, while malformed dates remain
 invalid. Research and temporal dates remain strict. Standard searches add no
-source fetch, preserving the fast default. A cutoff permits strong caller-owned first
+body fetch, but every result and audit URL receives a bounded, header-only,
+DNS-pinned terminal HTTPS check. Google transports are resolved and dead,
+unsafe, regional Google search, or cache rows are removed with their audit rows.
+The existing single retry is used only when no publishable result survives. A
+cutoff permits strong caller-owned first
 rows to replace a wrong model value/date only when every declared scope is at or
 before the cutoff; otherwise Search performs the complete scoped fallback.
 Without a cutoff, primary-value anchoring remains.

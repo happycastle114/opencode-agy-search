@@ -30,7 +30,9 @@ the matching `--effort`; a mismatch is invalid. Global `--model`, `--effort`,
 `--as-of YYYY-MM-DD` belongs only to temporal Search or Research, is inclusive,
 and must never be future. In Standard Search, `date` is optional: normalize a
 valid unbound date to `null`, but reject malformed dates; Research and temporal
-date handling remains strict. Preserve JSON stdout for machine use and
+date handling remains strict. Standard Search exposes only terminal public
+HTTPS URLs after bounded direct/redirect validation; never cite a discarded
+dead, unsafe, or Google search/cache row. Preserve JSON stdout for machine use and
 diagnostics on stderr.
 
 When the user explicitly asks to update a release-installer copy, rerun the
