@@ -142,6 +142,16 @@ install_fixture() {
   install_fixture_with "$current_installer" "$target_config" "$target_data"
 }
 
+mkdir -p "$e2e_root/insecure-install-parent"
+chmod 0777 "$e2e_root/insecure-install-parent"
+if OPENCODE_AGY_SEARCH_INSTALL_ROOT="$e2e_root/insecure-install-parent/install" \
+  install_fixture "$e2e_root/insecure-install-config" "$e2e_root/insecure-install-data"; then
+  printf 'installer accepted a non-sticky world-writable install ancestor\n' >&2
+  exit 1
+fi
+[[ ! -e "$e2e_root/insecure-install-config/opencode/plugins/agy-search.ts" ]]
+chmod 0700 "$e2e_root/insecure-install-parent"
+
 install_fixture_with "$old_installer" "$e2e_root/config" "$e2e_root/data"
 grep -F '"version": "0.2.9"' \
   "$e2e_root/data/opencode-agy-search/current/package.json" >/dev/null

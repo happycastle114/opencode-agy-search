@@ -77,6 +77,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 mkdir -p \
+  "$e2e_root/bin" \
+  "$e2e_root/home" \
   "$e2e_root/package" \
   "$e2e_root/tmp" \
   "$e2e_root/workspace/.opencode/plugins" \
@@ -98,16 +100,20 @@ ln -s "$plugin_entry" "$e2e_root/workspace/.opencode/plugins/agy-search.ts"
 ln -s "$auth_file" "$e2e_root/xdg/data/opencode/auth.json"
 
 agy_search_directory=$(dirname "$(command -v agy-search)")
+agy_wrapper="$e2e_root/bin/agy"
+printf '#!/bin/sh\nHOME=%q\nexport HOME\nexec %q "$@"\n' \
+  "$live_home" "$agy_executable" >"$agy_wrapper"
+chmod 0500 "$agy_wrapper"
 isolated_env=(
-  "PATH=$agy_search_directory:$(dirname "$opencode_bin"):/opt/homebrew/bin:/usr/bin:/bin"
-  "HOME=$live_home"
+  "PATH=$e2e_root/bin:$agy_search_directory:$(dirname "$opencode_bin"):/usr/bin:/bin"
+  "HOME=$e2e_root/home"
   "XDG_CONFIG_HOME=$e2e_root/xdg/config"
   "XDG_DATA_HOME=$e2e_root/xdg/data"
   "XDG_CACHE_HOME=$e2e_root/xdg/cache"
   "XDG_STATE_HOME=$e2e_root/xdg/state"
   "ZDOTDIR=$e2e_root/zdot"
   "TMPDIR=$e2e_root/tmp"
-  "AGY_SEARCH_AGY_PATH=$agy_executable"
+  "AGY_SEARCH_AGY_PATH=$agy_wrapper"
   "CI=1"
   "NO_COLOR=1"
   "TERM=dumb"
@@ -116,7 +122,7 @@ isolated_env=(
 (
   cd "$e2e_root/workspace"
   prompt=$(printf '%s' \
-    "Use the agy-search skill. For the cheap preflight, run command -v agy-search, command -v agy, command -v curl, agy-search --version, and agy --version only. Then run exactly: agy-search --model $agy_model --effort low search '한국 오늘 증시' -n 1 -o .agy-search/live-search.json. Do not mask its exit code. Do not run status or models, and do not repeat an identical broad query. Read the successful file and finish with the exact marker OPENCODE_AGY_SEARCH_LIVE_OK.")
+    "Use the agy-search skill. For the cheap preflight, run command -v agy-search, command -v agy, command -v curl, agy-search --version, and agy --version only. Then run exactly: agy-search --model $agy_model --effort low search 'IANA example domain' -n 1 -o .agy-search/live-search.json. Do not mask its exit code. Do not run status or models, and do not repeat an identical broad query. Read the successful file and finish with the exact marker OPENCODE_AGY_SEARCH_LIVE_OK.")
   env -i "${isolated_env[@]}" \
     "$opencode_bin" run --model "$live_model" --format json \
     "$prompt" \
@@ -127,6 +133,15 @@ result_path="$e2e_root/workspace/.agy-search/live-search.json"
 [[ -s "$result_path" ]]
 grep -F 'OPENCODE_AGY_SEARCH_LIVE_OK' "$e2e_root/opencode.jsonl" >/dev/null
 grep -F 'agy-search' "$e2e_root/opencode.jsonl" >/dev/null
+jq -e --arg skill_directory "$skill_directory" '
+  select(
+    .type == "tool_use"
+      and .part.tool == "skill"
+      and .part.state.status == "completed"
+      and .part.state.metadata.name == "agy-search"
+      and .part.state.metadata.dir == $skill_directory
+  )
+' "$e2e_root/opencode.jsonl" >/dev/null
 jq -e '
   def terminal_public_https:
     capture("^https://(?<host>[^/:?#]+)(?<path>/[^?#]*)?") as $url
