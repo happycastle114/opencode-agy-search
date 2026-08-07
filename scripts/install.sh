@@ -8,7 +8,7 @@ if [ "$(id -u)" -eq 0 ]; then
     exit 1
 fi
 
-PACKAGE_VERSION="0.3.7"
+PACKAGE_VERSION="0.3.8"
 ARCHIVE_NAME="opencode-agy-search-${PACKAGE_VERSION}.tgz"
 CHECKSUM_NAME="${ARCHIVE_NAME}.sha256"
 DEFAULT_DOWNLOAD_URL="https://github.com/happycastle114/opencode-agy-search/releases/download/v${PACKAGE_VERSION}"

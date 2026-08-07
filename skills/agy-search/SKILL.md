@@ -11,7 +11,7 @@ escalate only when the evidence is insufficient.
 ## Preflight
 
 Run only the cheap local checks once before the first research command in the
-current agent session. Require agy-search 0.2.6 or newer. On the normal
+current agent session. Require agy-search 0.2.7 or newer. On the normal
 un-pinned search path, do not invoke `agy-search models` or pass `--model`:
 
 ```bash
@@ -35,7 +35,7 @@ Do not silently switch providers. After installation, repeat the cheap
 preflight. Run `agy-search status` only to diagnose availability or verify an
 install/update, not before each search. Run `agy-search models` once before
 explicitly pinning a model; ordinary searches omit both `models` and `--model`.
-CLI 0.2.6 internally performs a bounded advisory catalog lookup and prefers
+CLI 0.2.7 internally performs a bounded advisory catalog lookup and prefers
 exact `gemini-3.6-flash-low` when present without creating a caller model pin;
 never invent or cache a model slug. If the selected returned slug ends in
 `-low`, `-medium`, or `-high`, pass the matching `--effort` value. A mismatched
@@ -168,7 +168,7 @@ Quick and Verified both start at low effort and use `-n 3`. Their difference is
 the evidence contract and timeout, not extra model thinking. Source-body verification,
 exact scopes, and canonical URLs provide temporal accuracy. Reserve medium for
 Synthesis and high for Deep unless the user explicitly overrides effort.
-Ordinary work omits both `agy-search models` and `--model`; CLI 0.2.6 performs
+Ordinary work omits both `agy-search models` and `--model`; CLI 0.2.7 performs
 its bounded advisory catalog lookup internally and prefers exact
 `gemini-3.6-flash-low` when present. Only an explicit model pin needs fresh
 discovery and its suffix-matched effort.

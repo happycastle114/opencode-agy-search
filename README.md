@@ -10,7 +10,7 @@ schemas, provenance checks, JSON output, and exit codes.
 ## Requirements
 
 - OpenCode 1.18.11
-- `agy-search` 0.2.6 on `PATH`
+- `agy-search` 0.2.7 on `PATH`
 - `curl` for bounded grounding-link resolution and opt-in temporal source checks
 - Google Antigravity CLI 1.1.10 or newer, signed in with web tools available
 
@@ -24,7 +24,7 @@ agy-search --version
 agy --version
 ```
 
-Ordinary searches must omit both `agy-search models` and `--model`. CLI 0.2.6
+Ordinary searches must omit both `agy-search models` and `--model`. CLI 0.2.7
 performs its own bounded advisory catalog lookup and prefers the exact
 `gemini-3.6-flash-low` slug when present; that internal preference is not a
 caller model pin. The core enforces the same Antigravity floor before content
@@ -137,7 +137,7 @@ unavailable, it stops and reports mechanical enforcement is impossible, or does
 only user-permitted discovery as unverified candidates. Antigravity cannot
 guarantee that no third-party snippet was ever viewed. Conclusions beyond
 returned source text are labeled `Inference:`.
-Ordinary work omits both `agy-search models` and `--model`; CLI 0.2.6 performs
+Ordinary work omits both `agy-search models` and `--model`; CLI 0.2.7 performs
 its bounded advisory catalog lookup internally and prefers exact
 `gemini-3.6-flash-low` when present. An explicit returned model slug ending
 `-low`, `-medium`, or `-high` must use matching `--effort`.
@@ -145,7 +145,7 @@ its bounded advisory catalog lookup internally and prefers exact
 ## GitHub Packages
 
 The same JavaScript package is published publicly as
-`@happycastle114/opencode-agy-search@0.3.7` at GitHub Packages. GitHub's npm
+`@happycastle114/opencode-agy-search@0.3.8` at GitHub Packages. GitHub's npm
 registry requires a classic personal access token with `read:packages` even for
 public packages, so this is the authenticated package-manager channel rather
 than the public one-liner channel.

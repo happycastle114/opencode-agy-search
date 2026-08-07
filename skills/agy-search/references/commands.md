@@ -2,7 +2,7 @@
 
 ## Global contract
 
-Before the first content command in an agent session, require agy-search 0.2.6
+Before the first content command in an agent session, require agy-search 0.2.7
 or newer and use this cheap local preflight. Do not invoke `agy-search models`
 unless an explicit pin is requested:
 
@@ -28,7 +28,7 @@ agy-search [--agy-path PATH] [--model SLUG] [--effort low|medium|high] \
   the current environment.
 - Content commands default to `--effort low`. Raise effort only for deliberate
   deep synthesis; explicit effort always overrides the default.
-- Ordinary work omits both `agy-search models` and `--model`. CLI 0.2.6
+- Ordinary work omits both `agy-search models` and `--model`. CLI 0.2.7
   performs a bounded advisory catalog lookup internally and prefers exact
   `gemini-3.6-flash-low` when present without creating a caller model pin. For
   an explicit pin whose returned slug ends in `-low`, `-medium`, or `-high`, pass
