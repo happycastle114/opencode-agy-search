@@ -92,7 +92,7 @@ mkdir -p "$e2e_root/assets" "$e2e_root/home"
 cd "$repo_root"
 npm pack --json --pack-destination "$e2e_root/assets" >/dev/null
 packed=$(find "$e2e_root/assets" -maxdepth 1 -type f -name '*.tgz')
-archive="$e2e_root/assets/opencode-agy-search-0.3.7.tgz"
+archive="$e2e_root/assets/opencode-agy-search-0.3.10.tgz"
 mv "$packed" "$archive"
 archive_basename=$(basename "$archive")
 if command -v sha256sum >/dev/null; then
@@ -105,7 +105,7 @@ fi
 
 mkdir -p "$e2e_root/old-assets" "$e2e_root/old-extract"
 tar -xzf "$archive" -C "$e2e_root/old-extract"
-perl -0pi -e 's/"version": "0\.3\.7"/"version": "0.2.9"/' \
+perl -0pi -e 's/"version": "0\.3\.10"/"version": "0.2.9"/' \
   "$e2e_root/old-extract/package/package.json"
 tar -czf "$e2e_root/old-assets/opencode-agy-search-0.2.9.tgz" \
   -C "$e2e_root/old-extract" package
@@ -116,7 +116,7 @@ else
   (cd "$e2e_root/old-assets" && shasum -a 256 opencode-agy-search-0.2.9.tgz) \
     >"$e2e_root/old-assets/opencode-agy-search-0.2.9.tgz.sha256"
 fi
-sed 's/PACKAGE_VERSION="0.3.7"/PACKAGE_VERSION="0.2.9"/' \
+sed 's/PACKAGE_VERSION="0.3.10"/PACKAGE_VERSION="0.2.9"/' \
   "$repo_root/scripts/install.sh" >"$e2e_root/install-0.2.9.template.sh"
 
 start_fixture_server
@@ -142,6 +142,16 @@ install_fixture() {
   install_fixture_with "$current_installer" "$target_config" "$target_data"
 }
 
+mkdir -p "$e2e_root/insecure-install-parent"
+chmod 0777 "$e2e_root/insecure-install-parent"
+if OPENCODE_AGY_SEARCH_INSTALL_ROOT="$e2e_root/insecure-install-parent/install" \
+  install_fixture "$e2e_root/insecure-install-config" "$e2e_root/insecure-install-data"; then
+  printf 'installer accepted a non-sticky world-writable install ancestor\n' >&2
+  exit 1
+fi
+[[ ! -e "$e2e_root/insecure-install-config/opencode/plugins/agy-search.ts" ]]
+chmod 0700 "$e2e_root/insecure-install-parent"
+
 install_fixture_with "$old_installer" "$e2e_root/config" "$e2e_root/data"
 grep -F '"version": "0.2.9"' \
   "$e2e_root/data/opencode-agy-search/current/package.json" >/dev/null
@@ -151,7 +161,7 @@ install_fixture "$e2e_root/config" "$e2e_root/data"
 plugin="$e2e_root/config/opencode/plugins/agy-search.ts"
 [[ -L "$plugin" ]]
 [[ -f "$plugin" ]]
-grep -F '"version": "0.3.7"' \
+grep -F '"version": "0.3.10"' \
   "$e2e_root/data/opencode-agy-search/current/package.json" >/dev/null
 new_current_target=$(readlink "$e2e_root/data/opencode-agy-search/current")
 [[ "$new_current_target" != "$old_current_target" ]]
@@ -160,7 +170,7 @@ install_fixture "$e2e_root/config" "$e2e_root/data"
 [[ $(readlink "$plugin") == "$first_target" ]]
 
 archive_digest=$(awk 'NR == 1 { print $1 }' "$archive.sha256")
-preexisting_release="$e2e_root/preexisting-data/opencode-agy-search/releases/0.3.7-${archive_digest:0:12}"
+preexisting_release="$e2e_root/preexisting-data/opencode-agy-search/releases/0.3.10-${archive_digest:0:12}"
 mkdir -p "$e2e_root/preexisting-extract" "$(dirname "$preexisting_release")"
 tar -xzf "$archive" -C "$e2e_root/preexisting-extract"
 mv "$e2e_root/preexisting-extract/package" "$preexisting_release"
@@ -176,7 +186,7 @@ assert_preexisting_mode_rejected() {
   local label="$2"
   local mode_data="$e2e_root/$label-data"
   local mode_extract="$e2e_root/$label-extract"
-  local mode_release="$mode_data/opencode-agy-search/releases/0.3.7-${archive_digest:0:12}"
+  local mode_release="$mode_data/opencode-agy-search/releases/0.3.10-${archive_digest:0:12}"
   mkdir -p "$mode_extract" "$(dirname "$mode_release")"
   tar -xzf "$archive" -C "$mode_extract"
   mv "$mode_extract/package" "$mode_release"
@@ -193,7 +203,7 @@ assert_preexisting_mode_rejected 0602 world-writable
 
 mkdir -p "$e2e_root/unsafe-assets/package/skills/agy-search"
 ln -s /etc/passwd "$e2e_root/unsafe-assets/package/index.ts"
-printf '{"name": "@happycastle114/opencode-agy-search", "version": "0.3.7"}\n' \
+printf '{"name": "@happycastle114/opencode-agy-search", "version": "0.3.10"}\n' \
   >"$e2e_root/unsafe-assets/package/package.json"
 printf 'unsafe\n' >"$e2e_root/unsafe-assets/package/LICENSE"
 printf 'unsafe\n' >"$e2e_root/unsafe-assets/package/skills/agy-search/SKILL.md"

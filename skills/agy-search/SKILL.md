@@ -11,7 +11,7 @@ escalate only when the evidence is insufficient.
 ## Preflight
 
 Run only the cheap local checks once before the first research command in the
-current agent session. Require agy-search 0.2.6 or newer. On the normal
+current agent session. Require agy-search 0.2.9 or newer. On the normal
 un-pinned search path, do not invoke `agy-search models` or pass `--model`:
 
 ```bash
@@ -35,7 +35,7 @@ Do not silently switch providers. After installation, repeat the cheap
 preflight. Run `agy-search status` only to diagnose availability or verify an
 install/update, not before each search. Run `agy-search models` once before
 explicitly pinning a model; ordinary searches omit both `models` and `--model`.
-CLI 0.2.6 internally performs a bounded advisory catalog lookup and prefers
+CLI 0.2.9 internally performs a bounded advisory catalog lookup and prefers
 exact `gemini-3.6-flash-low` when present without creating a caller model pin;
 never invent or cache a model slug. If the selected returned slug ends in
 `-low`, `-medium`, or `-high`, pass the matching `--effort` value. A mismatched
@@ -168,7 +168,7 @@ Quick and Verified both start at low effort and use `-n 3`. Their difference is
 the evidence contract and timeout, not extra model thinking. Source-body verification,
 exact scopes, and canonical URLs provide temporal accuracy. Reserve medium for
 Synthesis and high for Deep unless the user explicitly overrides effort.
-Ordinary work omits both `agy-search models` and `--model`; CLI 0.2.6 performs
+Ordinary work omits both `agy-search models` and `--model`; CLI 0.2.9 performs
 its bounded advisory catalog lookup internally and prefers exact
 `gemini-3.6-flash-low` when present. Only an explicit model pin needs fresh
 discovery and its suffix-matched effort.
@@ -339,6 +339,9 @@ run research merely to improve prose. Manual `--effort` remains an override,
 not a substitute for choosing the correct operation.
 
 An exit 6 means the wrapper rejected the evidence, so consume no partial claim.
+Standard `search` already performs at most three total attempts inside the
+original deadline, using each available low, medium, and high tier at most once;
+do not wrap it in another identical retry.
 Temporal `search` already attempts one bounded recovery for every caller-owned
 scope and fails all-or-nothing; temporal `research` is one-shot and never
 recovers. Never rerun an identical broad command. Correct a demonstrably wrong

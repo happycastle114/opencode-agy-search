@@ -7,8 +7,9 @@ if [ "$(id -u)" -eq 0 ]; then
     printf 'opencode-agy-search installer: run as the target user, not root\n' >&2
     exit 1
 fi
+installer_user_id="$(id -u)"
 
-PACKAGE_VERSION="0.3.7"
+PACKAGE_VERSION="0.3.10"
 ARCHIVE_NAME="opencode-agy-search-${PACKAGE_VERSION}.tgz"
 CHECKSUM_NAME="${ARCHIVE_NAME}.sha256"
 DEFAULT_DOWNLOAD_URL="https://github.com/happycastle114/opencode-agy-search/releases/download/v${PACKAGE_VERSION}"
@@ -71,9 +72,35 @@ validate_package_tree() {
         fail "$tree_root must be a real directory"
     unsafe_entry="$(find "$tree_root" \
         \( ! -type f ! -type d -o -type f -links +1 \
-        -o -perm -020 -o -perm -002 \) \
+        -o -perm -020 -o -perm -002 -o ! -user "$installer_user_id" \) \
         -print -quit)"
     [ -z "$unsafe_entry" ] || fail "package tree contains an unsafe entry"
+}
+
+validate_directory_chain() {
+    directory="$1"
+    first_directory=1
+    while :; do
+        [ -d "$directory" ] && [ ! -L "$directory" ] || \
+            fail "$directory must be a real directory"
+        if [ "$first_directory" -eq 1 ]; then
+            unexpected_owner="$(find "$directory" -prune \
+                ! -user "$installer_user_id" -print -quit)"
+            [ -z "$unexpected_owner" ] || \
+                fail "$directory must be owned by the target user"
+            first_directory=0
+        fi
+        unsafe_writable_directory="$(find "$directory" -prune \
+            \( \( -perm -020 -o -perm -002 \) ! -perm -1000 \) \
+            -print -quit)"
+        [ -z "$unsafe_writable_directory" ] || \
+            fail "$directory has an unsafe writable ancestor"
+        [ "$directory" = / ] && break
+        parent_directory="$(dirname "$directory")"
+        [ "$parent_directory" != "$directory" ] || \
+            fail "cannot validate parent directory for $directory"
+        directory="$parent_directory"
+    done
 }
 
 download() {
@@ -107,6 +134,7 @@ plugin_directory="${OPENCODE_AGY_SEARCH_PLUGIN_DIR:-$config_home/opencode/plugin
 install_root="${OPENCODE_AGY_SEARCH_INSTALL_ROOT:-$data_home/opencode-agy-search}"
 temp_base="${TMPDIR:-/tmp}"
 mkdir -p "$install_root"
+validate_directory_chain "$install_root"
 lock_directory="$install_root/.install-lock"
 temporary="$(mktemp -d "$temp_base/opencode-agy-search.XXXXXX")"
 marker="$temporary/.opencode-agy-search-owned"
@@ -221,6 +249,8 @@ grep -F "\"version\": \"$PACKAGE_VERSION\"" \
 release_id="${PACKAGE_VERSION}-$(printf '%s' "$actual_checksum" | cut -c1-12)"
 release_directory="$install_root/releases/$release_id"
 mkdir -p "$install_root/releases" "$plugin_directory"
+validate_directory_chain "$install_root/releases"
+validate_directory_chain "$plugin_directory"
 if [ -e "$release_directory" ] || [ -L "$release_directory" ]; then
     validate_package_tree "$release_directory"
     diff -qr "$package_root" "$release_directory" >/dev/null 2>&1 || \

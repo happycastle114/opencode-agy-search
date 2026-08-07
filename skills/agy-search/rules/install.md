@@ -2,10 +2,10 @@
 
 Before the first `agy-search` command in an agent session, run only
 `command -v agy-search`, `command -v agy`, `command -v curl`,
-`agy-search --version`, and `agy --version`. Require agy-search 0.2.6 or newer.
+`agy-search --version`, and `agy --version`. Require agy-search 0.2.9 or newer.
 If a check fails, explain the missing prerequisite and stop. Do not run
 `agy-search status` or `agy-search models` as ordinary preflight. On ordinary
-searches, omit both `models` and `--model`: CLI 0.2.6 performs a bounded
+searches, omit both `models` and `--model`: CLI 0.2.9 performs a bounded
 advisory catalog lookup internally and prefers exact `gemini-3.6-flash-low`
 when present without turning it into a caller model pin.
 Do not install packages, sign into Google Antigravity, change OpenCode config, or

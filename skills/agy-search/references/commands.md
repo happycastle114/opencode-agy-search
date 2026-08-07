@@ -2,7 +2,7 @@
 
 ## Global contract
 
-Before the first content command in an agent session, require agy-search 0.2.6
+Before the first content command in an agent session, require agy-search 0.2.9
 or newer and use this cheap local preflight. Do not invoke `agy-search models`
 unless an explicit pin is requested:
 
@@ -28,7 +28,7 @@ agy-search [--agy-path PATH] [--model SLUG] [--effort low|medium|high] \
   the current environment.
 - Content commands default to `--effort low`. Raise effort only for deliberate
   deep synthesis; explicit effort always overrides the default.
-- Ordinary work omits both `agy-search models` and `--model`. CLI 0.2.6
+- Ordinary work omits both `agy-search models` and `--model`. CLI 0.2.9
   performs a bounded advisory catalog lookup internally and prefers exact
   `gemini-3.6-flash-low` when present without creating a caller model pin. For
   an explicit pin whose returned slug ends in `-low`, `-medium`, or `-high`, pass
@@ -189,10 +189,14 @@ source-date text in a same-URL source, requires each structured source date to
 be ISO and audit-backed, and requires the unique latest candidate to remain
 publicly visible; it is one-shot and never recovers or emits a partial report.
 Every Standard Search result and audit URL is validated with bounded,
-HTTPS-only, header-only curl arguments. Google grounding transports are
-resolved; direct URLs are probed; dead, unsafe, regional Google search, and
-cache rows are discarded with their audit rows. Each redirect hop is parsed,
-DNS-validated, and pinned before the next request.
+HTTPS-only, DNS-pinned curl arguments. Validation starts with HEAD; a direct
+publisher that rejects HEAD receives one range-requested GET capped at 2 MiB
+under the same deadline and redirect policy. Google grounding transports are
+resolved; dead, unsafe, regional Google search, and cache rows are discarded
+with their audit rows. Each redirect hop is parsed, DNS-validated, and pinned
+before the next request. When no publishable result survives, Standard Search
+uses the available low, medium, and high tiers at most once each under the
+original command deadline. Do not add an outer retry for the same broad command.
 
 Preserve a hard caller constraint such as `only official`, `only first-party`,
 or `only project-maintained` in the query. Do not infer ownership from a domain
