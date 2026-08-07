@@ -5,6 +5,8 @@ opencode_bin=${OPENCODE_BIN:-}
 agy_executable=${AGY_REAL_EXECUTABLE:-}
 live_model=${OPENCODE_LIVE_MODEL:-}
 agy_model=${AGY_LIVE_MODEL:-}
+live_home=${HOME:?}
+auth_file=${OPENCODE_AUTH_FILE:-$live_home/.local/share/opencode/auth.json}
 
 if [[ -z "$opencode_bin" || ! -x "$opencode_bin" ]]; then
   printf 'OPENCODE_BIN must identify an executable\n' >&2
@@ -20,6 +22,10 @@ if [[ -z "$live_model" ]]; then
 fi
 if [[ -z "$agy_model" ]]; then
   printf 'AGY_LIVE_MODEL must identify a slug returned by agy-search models\n' >&2
+  exit 2
+fi
+if [[ ! -f "$auth_file" ]]; then
+  printf 'OPENCODE_AUTH_FILE must identify an OpenCode auth file\n' >&2
   exit 2
 fi
 if ! command -v agy-search >/dev/null; then
@@ -70,17 +76,48 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-mkdir -p "$e2e_root/package" "$e2e_root/workspace/.opencode/plugins"
+mkdir -p \
+  "$e2e_root/package" \
+  "$e2e_root/tmp" \
+  "$e2e_root/workspace/.opencode/plugins" \
+  "$e2e_root/zdot" \
+  "$e2e_root/xdg/cache" \
+  "$e2e_root/xdg/config" \
+  "$e2e_root/xdg/data/opencode" \
+  "$e2e_root/xdg/state"
 npm pack --json --pack-destination "$e2e_root/package" >/dev/null
 plugin_tarball=$(find "$e2e_root/package" -maxdepth 1 -type f -name '*.tgz')
 tar -xzf "$plugin_tarball" -C "$e2e_root/package"
-ln -s "$e2e_root/package/package/index.ts" "$e2e_root/workspace/.opencode/plugins/agy-search.ts"
+plugin_root="$e2e_root/package/package"
+plugin_entry="$plugin_root/index.ts"
+skill_directory="$plugin_root/skills/agy-search"
+jq -e '.version == "0.3.10" and .agySearch.minimumCliVersion == "0.2.9"' \
+  "$plugin_root/package.json" >/dev/null
+[[ -f "$plugin_entry" && -f "$skill_directory/SKILL.md" ]]
+ln -s "$plugin_entry" "$e2e_root/workspace/.opencode/plugins/agy-search.ts"
+ln -s "$auth_file" "$e2e_root/xdg/data/opencode/auth.json"
+
+agy_search_directory=$(dirname "$(command -v agy-search)")
+isolated_env=(
+  "PATH=$agy_search_directory:$(dirname "$opencode_bin"):/opt/homebrew/bin:/usr/bin:/bin"
+  "HOME=$live_home"
+  "XDG_CONFIG_HOME=$e2e_root/xdg/config"
+  "XDG_DATA_HOME=$e2e_root/xdg/data"
+  "XDG_CACHE_HOME=$e2e_root/xdg/cache"
+  "XDG_STATE_HOME=$e2e_root/xdg/state"
+  "ZDOTDIR=$e2e_root/zdot"
+  "TMPDIR=$e2e_root/tmp"
+  "AGY_SEARCH_AGY_PATH=$agy_executable"
+  "CI=1"
+  "NO_COLOR=1"
+  "TERM=dumb"
+)
 
 (
   cd "$e2e_root/workspace"
   prompt=$(printf '%s' \
-    "Use the agy-search skill. For the cheap preflight, run command -v agy-search, command -v agy, command -v curl, agy-search --version, and agy --version only. Then run exactly: agy-search --model $agy_model --effort low search 'Google Antigravity CLI 1.1.10' --domain antigravity.google -n 2 -o .agy-search/live-search.json. Do not mask its exit code. Do not run status or models, and do not repeat an identical broad query. Read the successful file and finish with the exact marker OPENCODE_AGY_SEARCH_LIVE_OK.")
-  AGY_SEARCH_AGY_PATH="$agy_executable" CI=1 NO_COLOR=1 TERM=dumb \
+    "Use the agy-search skill. For the cheap preflight, run command -v agy-search, command -v agy, command -v curl, agy-search --version, and agy --version only. Then run exactly: agy-search --model $agy_model --effort low search '한국 오늘 증시' -n 1 -o .agy-search/live-search.json. Do not mask its exit code. Do not run status or models, and do not repeat an identical broad query. Read the successful file and finish with the exact marker OPENCODE_AGY_SEARCH_LIVE_OK.")
+  env -i "${isolated_env[@]}" \
     "$opencode_bin" run --model "$live_model" --format json \
     "$prompt" \
     >"$e2e_root/opencode.jsonl" 2>"$e2e_root/opencode.stderr"
@@ -90,14 +127,18 @@ result_path="$e2e_root/workspace/.agy-search/live-search.json"
 [[ -s "$result_path" ]]
 grep -F 'OPENCODE_AGY_SEARCH_LIVE_OK' "$e2e_root/opencode.jsonl" >/dev/null
 grep -F 'agy-search' "$e2e_root/opencode.jsonl" >/dev/null
-jq -e --arg domain 'antigravity.google' '
-  def allowed_host:
-    capture("^https?://(?<host>[^/:?#]+)").host as $host
-    | ($host == $domain or ($host | endswith("." + $domain)));
+jq -e '
+  def terminal_public_https:
+    capture("^https://(?<host>[^/:?#]+)(?<path>/[^?#]*)?") as $url
+    | ($url.host | ascii_downcase) as $host
+    | ($url.path // "/") as $path
+    | $host != "vertexaisearch.cloud.google.com"
+      and (((($host == "google.com") or ($host | endswith(".google.com")))
+        and (($path == "/search") or ($path == "/url"))) | not);
   [.results[]?.url, .sources[]?.url, .evidence_audit?.candidates[]?.url] as $public_urls
   | .object == "search"
     and ($public_urls | length > 0)
-    and ($public_urls | all(type == "string" and allowed_host))
+    and ($public_urls | all(type == "string" and terminal_public_https))
 ' \
   "$result_path" >/dev/null
 
